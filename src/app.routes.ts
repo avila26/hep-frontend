@@ -10,11 +10,15 @@ export const appRoutes: Routes = [
         component: AppLayout,
         children: [
             { path: 'dashboard', component: Dashboard },
-            { path: 'uikit', loadChildren: () => import('./app/pages/uikit/uikit.routes') },
-            { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') }
+            { path: 'activos', loadChildren: () => import('./app/pages/activos/activos.routes').then(m => m.default) },
+            { path: 'traslados', loadChildren: () => import('./app/pages/traslados/traslados.routes').then(m => m.default) },
+            { path: 'mantenimientos', loadChildren: () => import('./app/pages/mantenimientos/mantenimientos.routes').then(m => m.default) },
+            { path: 'bajas', loadChildren: () => import('./app/pages/bajas/bajas.routes').then(m => m.default) },
+            { path: 'reportes', loadChildren: () => import('./app/pages/reportes/reportes.routes').then(m => m.default) },
+            { path: 'administracion', loadChildren: () => import('./app/pages/administracion/administracion.routes').then(m => m.default) }
         ]
     },
     { path: 'notfound', component: Notfound },
-    { path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes') },
+    { path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes').then(m => m.default) },
     { path: '**', redirectTo: '/notfound' }
 ];

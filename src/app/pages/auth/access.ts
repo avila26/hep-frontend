@@ -17,11 +17,11 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
                             <div class="flex justify-center items-center border-2 border-orange-500 rounded-full" style="width: 3.2rem; height: 3.2rem">
                                 <i class="text-orange-500 pi pi-fw pi-lock text-2xl!"></i>
                             </div>
-                            <h1 class="text-surface-900 dark:text-surface-0 font-bold text-4xl lg:text-5xl mb-2">Access Denied</h1>
-                            <span class="text-muted-color mb-8">You do not have the necessary permisions. Please contact admins.</span>
-                            <img src="https://primefaces.org/cdn/templates/sakai/auth/asset-access.svg" alt="Access denied" class="mb-8" width="80%" />
+                            <h1 class="text-surface-900 dark:text-surface-0 font-bold text-4xl lg:text-5xl mb-2">Acceso denegado</h1>
+                            <span class="text-muted-color mb-8">No tiene los permisos necesarios. Contacte al administrador del sistema.</span>
+                            <img src="https://primefaces.org/cdn/templates/sakai/auth/asset-access.svg" alt="Acceso denegado" class="mb-8" width="80%" />
                             <div class="col-span-12 mt-8 text-center">
-                                <p-button label="Go to Dashboard" routerLink="/" severity="warn" />
+                                <p-button label="Ir al Panel Principal" routerLink="/dashboard" severity="warn" />
                             </div>
                         </div>
                     </div>

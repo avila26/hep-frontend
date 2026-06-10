@@ -9,9 +9,6 @@ import { filter } from 'rxjs/operators';
     selector: '[app-menuitem]',
     imports: [CommonModule, RouterModule, RippleModule],
     template: `
-        @if (root() && isVisible()) {
-            <div class="layout-menuitem-root-text">{{ item().label }}</div>
-        }
         @if ((!hasRouterLink() || hasChildren()) && isVisible()) {
             <a [attr.href]="item().url" (click)="itemClick($event)" [ngClass]="item().class" [attr.target]="item().target" tabindex="0" pRipple>
                 <i [ngClass]="item().icon" class="layout-menuitem-icon"></i>
@@ -46,7 +43,7 @@ import { filter } from 'rxjs/operators';
                 }
             </a>
         }
-        @if (hasChildren() && isVisible() && (root() || isActive())) {
+        @if (hasChildren() && isVisible() && isActive()) {
             <ul [animate.enter]="initialized() ? 'p-submenu-enter' : null" [animate.leave]="'p-submenu-leave'" [class.layout-root-submenulist]="root()">
                 @for (child of item().items; track child?.label) {
                     <li app-menuitem [item]="child" [parentPath]="fullPath()" [root]="false" [class]="child['badgeClass']"></li>

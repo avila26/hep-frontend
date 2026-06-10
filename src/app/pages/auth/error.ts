@@ -17,11 +17,11 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
                             <div class="flex justify-center items-center border-2 border-pink-500 rounded-full" style="height: 3.2rem; width: 3.2rem">
                                 <i class="pi pi-fw pi-exclamation-circle text-2xl! text-pink-500"></i>
                             </div>
-                            <h1 class="text-surface-900 dark:text-surface-0 font-bold text-5xl mb-2">Error Occured</h1>
-                            <span class="text-muted-color mb-8">Requested resource is not available.</span>
+                            <h1 class="text-surface-900 dark:text-surface-0 font-bold text-5xl mb-2">Error del sistema</h1>
+                            <span class="text-muted-color mb-8">Ocurrió un error al procesar la solicitud.</span>
                             <img src="https://primefaces.org/cdn/templates/sakai/auth/asset-error.svg" alt="Error" class="mb-8" width="80%" />
                             <div class="col-span-12 mt-8 text-center">
-                                <p-button label="Go to Dashboard" routerLink="/" severity="danger" />
+                                <p-button label="Ir al Panel Principal" routerLink="/dashboard" severity="danger" />
                             </div>
                         </div>
                     </div>

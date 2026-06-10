@@ -16,7 +16,7 @@ import { AppMenuitem } from './app.menuitem';
                 <li class="menu-separator"></li>
             }
         }
-    </ul> `,
+    </ul> `
 })
 export class AppMenu {
     model: MenuItem[] = [];
@@ -24,95 +24,76 @@ export class AppMenu {
     ngOnInit() {
         this.model = [
             {
-                label: 'Home',
-                items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', routerLink: ['dashboard'] }]
+                label: 'Inicio',
+                icon: 'pi pi-fw pi-home',
+                routerLink: ['/dashboard']
             },
             {
-                label: 'UI Components',
+                label: 'Activos',
+                path: '/activos',
+                icon: 'pi pi-fw pi-box',
                 items: [
-                    { label: 'Form Layout', icon: 'pi pi-fw pi-id-card', routerLink: ['/uikit/formlayout'] },
-                    { label: 'Input', icon: 'pi pi-fw pi-check-square', routerLink: ['/uikit/input'] },
-                    { label: 'Button', icon: 'pi pi-fw pi-mobile', class: 'rotated-icon', routerLink: ['/uikit/button'] },
-                    { label: 'Table', icon: 'pi pi-fw pi-table', routerLink: ['/uikit/table'] },
-                    { label: 'Tree', icon: 'pi pi-fw pi-share-alt', routerLink: ['/uikit/tree'] },
-                    { label: 'Panel', icon: 'pi pi-fw pi-tablet', routerLink: ['/uikit/panel'] },
-                    { label: 'Overlay', icon: 'pi pi-fw pi-clone', routerLink: ['/uikit/overlay'] },
-                    { label: 'File', icon: 'pi pi-fw pi-file', routerLink: ['/uikit/file'] },
-                    { label: 'Chart', icon: 'pi pi-fw pi-chart-bar', routerLink: ['/uikit/charts'] }
+                    { label: 'Registrar Activo', icon: 'pi pi-fw pi-plus-circle', routerLink: ['/activos/registrar'] },
+                    { label: 'Consultar Activos', icon: 'pi pi-fw pi-search', routerLink: ['/activos/consultar'] },
+                    { label: 'Carga Masiva', icon: 'pi pi-fw pi-file-excel', routerLink: ['/activos/carga-masiva'] },
+                    { label: 'Código de Barras', icon: 'pi pi-fw pi-qrcode', routerLink: ['/activos/codigo-barras'] },
+                    { label: 'Hoja de Vida', icon: 'pi pi-fw pi-history', routerLink: ['/activos/hoja-vida'] }
                 ]
             },
             {
-                label: 'Pages',
-                icon: 'pi pi-fw pi-briefcase',
-                path: '/pages',
+                label: 'Traslados',
+                path: '/traslados',
+                icon: 'pi pi-fw pi-arrow-right-arrow-left',
                 items: [
-                    {
-                        label: 'Landing',
-                        icon: 'pi pi-fw pi-globe',
-                        routerLink: ['/landing']
-                    },
-                    {
-                        label: 'Auth',
-                        icon: 'pi pi-fw pi-user',
-                        path: '/auth',
-                        items: [
-                            {
-                                label: 'Login',
-                                icon: 'pi pi-fw pi-sign-in',
-                                routerLink: ['/auth/login']
-                            },
-                            {
-                                label: 'Error',
-                                icon: 'pi pi-fw pi-times-circle',
-                                routerLink: ['/auth/error']
-                            },
-                            {
-                                label: 'Access Denied',
-                                icon: 'pi pi-fw pi-lock',
-                                routerLink: ['/auth/access']
-                            }
-                        ]
-                    },
-                    {
-                        label: 'Crud',
-                        icon: 'pi pi-fw pi-pencil',
-                        routerLink: ['/pages/crud']
-                    },
-                    {
-                        label: 'Not Found',
-                        icon: 'pi pi-fw pi-exclamation-circle',
-                        routerLink: ['/notfound']
-                    }
+                    { label: 'Registrar Traslado', icon: 'pi pi-fw pi-plus', routerLink: ['/traslados/registrar'] },
+                    { label: 'Pendientes', icon: 'pi pi-fw pi-clock', routerLink: ['/traslados/pendientes'] },
+                    { label: 'Ejecutados', icon: 'pi pi-fw pi-check', routerLink: ['/traslados/ejecutados'] },
+                    { label: 'Historial', icon: 'pi pi-fw pi-history', routerLink: ['/traslados/historial'] }
                 ]
             },
             {
-                label: 'Hierarchy',
-                path: '/hierarchy',
+                label: 'Mantenimientos',
+                path: '/mantenimientos',
+                icon: 'pi pi-fw pi-wrench',
                 items: [
-                    {
-                        label: 'Submenu 1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        path: '/hierarchy/submenu_1',
-                        items: [
-                            {
-                                label: 'Submenu 1.1',
-                                icon: 'pi pi-fw pi-bookmark',
-                                path: '/hierarchy/submenu_1/submenu_1_1',
-                                items: [
-                                    { label: 'Submenu 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-                                    { label: 'Submenu 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-                                    { label: 'Submenu 1.1.3', icon: 'pi pi-fw pi-bookmark' }
-                                ]
-                            },
-                            {
-                                label: 'Submenu 1.2',
-                                icon: 'pi pi-fw pi-bookmark',
-                                path: '/hierarchy/submenu_1/submenu_1_2',
-                                items: [{ label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                            }
-                        ]
-                    
-                    }
+                    { label: 'Preventivos', icon: 'pi pi-fw pi-calendar-plus', routerLink: ['/mantenimientos/preventivos'] },
+                    { label: 'Correctivos', icon: 'pi pi-fw pi-exclamation-triangle', routerLink: ['/mantenimientos/correctivos'] },
+                    { label: 'Cerrar Mantenimiento', icon: 'pi pi-fw pi-lock', routerLink: ['/mantenimientos/cerrar'] },
+                    { label: 'Historial', icon: 'pi pi-fw pi-history', routerLink: ['/mantenimientos/historial'] }
+                ]
+            },
+            {
+                label: 'Bajas',
+                path: '/bajas',
+                icon: 'pi pi-fw pi-trash',
+                items: [
+                    { label: 'Solicitudes', icon: 'pi pi-fw pi-file-edit', routerLink: ['/bajas/solicitudes'] },
+                    { label: 'Informes Técnicos', icon: 'pi pi-fw pi-file-pdf', routerLink: ['/bajas/informes'] },
+                    { label: 'Revisión', icon: 'pi pi-fw pi-eye', routerLink: ['/bajas/revision'] },
+                    { label: 'Aprobados', icon: 'pi pi-fw pi-check-square', routerLink: ['/bajas/aprobados'] },
+                    { label: 'Egresos', icon: 'pi pi-fw pi-sign-out', routerLink: ['/bajas/egresos'] }
+                ]
+            },
+            {
+                label: 'Reportes',
+                path: '/reportes',
+                icon: 'pi pi-fw pi-chart-bar',
+                items: [
+                    { label: 'Activos', icon: 'pi pi-fw pi-box', routerLink: ['/reportes/activos'] },
+                    { label: 'Mantenimientos', icon: 'pi pi-fw pi-wrench', routerLink: ['/reportes/mantenimientos'] },
+                    { label: 'Traslados', icon: 'pi pi-fw pi-exchange', routerLink: ['/reportes/traslados'] },
+                    { label: 'Depreciación', icon: 'pi pi-fw pi-percentage', routerLink: ['/reportes/depreciacion'] }
+                ]
+            },
+            {
+                label: 'Administración',
+                path: '/administracion',
+                icon: 'pi pi-fw pi-cog',
+                items: [
+                    { label: 'Usuarios', icon: 'pi pi-fw pi-users', routerLink: ['/administracion/usuarios'] },
+                    { label: 'Roles', icon: 'pi pi-fw pi-shield', routerLink: ['/administracion/roles'] },
+                    { label: 'Catálogos', icon: 'pi pi-fw pi-list', routerLink: ['/administracion/catalogos'] },
+                    { label: 'Auditoría', icon: 'pi pi-fw pi-info-circle', routerLink: ['/administracion/auditoria'] }
                 ]
             }
         ];

@@ -14,7 +14,7 @@ import { LayoutService } from '@/app/layout/service/layout.service';
             <button class="layout-menu-button layout-topbar-action" (click)="layoutService.onMenuToggle()">
                 <i class="pi pi-bars"></i>
             </button>
-                <a class="layout-topbar-logo" routerLink="/">
+                <a class="layout-topbar-logo" routerLink="/dashboard">
                 <img 
                 class="layout-topbar-logo-img"
                 src="assets/images/ministerio_salud_ecuador.png"
@@ -38,7 +38,7 @@ import { LayoutService } from '@/app/layout/service/layout.service';
                 <div class="layout-topbar-menu-content">
                     <button type="button" class="layout-topbar-action">
                         <i class="pi pi-user"></i>
-                        <span>Profile</span>
+                        <span>Perfil</span>
                     </button>
                 </div>
             </div>
