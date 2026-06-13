@@ -8,7 +8,8 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
-import { Message } from 'primereact/message';
+import CreatableSelect from 'react-select/creatable';
+import type { SingleValue } from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import { useActivos } from '../../context/ActivosContext';
 
@@ -46,6 +47,278 @@ interface Activo {
     ubicacion: string;
 }
 
+type NombreOption = {
+    label: string;
+    value: string;
+};
+
+type NombreGroup = {
+    label: string;
+    options: NombreOption[];
+};
+
+const GROUPED_NOMBRE_OPTIONS: NombreGroup[] = [
+    {
+        label: 'Equipo médico (EQM)',
+        options: [
+            { value: 'Ventilador mecánico', label: 'Ventilador mecánico' },
+            { value: 'Monitor de signos vitales', label: 'Monitor de signos vitales' },
+            { value: 'Desfibrilador', label: 'Desfibrilador' },
+            { value: 'Bomba de infusión', label: 'Bomba de infusión' },
+            { value: 'Electrocardiógrafo', label: 'Electrocardiógrafo' },
+            { value: 'Bisturí eléctrico', label: 'Bisturí eléctrico' },
+            { value: 'Lámpara quirúrgica', label: 'Lámpara quirúrgica' }
+        ]
+    },
+    {
+        label: 'Equipo de laboratorio (EQL)',
+        options: [
+            { value: 'Analizador de sangre', label: 'Analizador de sangre' },
+            { value: 'Centrífuga', label: 'Centrífuga' },
+            { value: 'Microscopio', label: 'Microscopio' },
+            { value: 'Autoclave', label: 'Autoclave' },
+            { value: 'Agitador de laboratorio', label: 'Agitador de laboratorio' }
+        ]
+    },
+    {
+        label: 'Equipo de rayos e imagen (EQR)',
+        options: [
+            { value: 'Equipo de rayos X', label: 'Equipo de rayos X' },
+            { value: 'Tomógrafo', label: 'Tomógrafo' },
+            { value: 'Mamógrafo', label: 'Mamógrafo' },
+            { value: 'Ecógrafo', label: 'Ecógrafo' }
+        ]
+    },
+    {
+        label: 'Equipo informático (EQI)',
+        options: [
+            { value: 'Computadora de escritorio', label: 'Computadora de escritorio' },
+            { value: 'Laptop', label: 'Laptop' },
+            { value: 'Tablet', label: 'Tablet' },
+            { value: 'Impresora', label: 'Impresora' },
+            { value: 'Servidor', label: 'Servidor' },
+            { value: 'Switch de red', label: 'Switch de red' },
+            { value: 'Router', label: 'Router' },
+            { value: 'Monitor', label: 'Monitor' }
+        ]
+    },
+    {
+        label: 'Equipo de oficina (EQO)',
+        options: [
+            { value: 'Teléfono fijo', label: 'Teléfono fijo' },
+            { value: 'Fotocopiadora', label: 'Fotocopiadora' },
+            { value: 'Proyector', label: 'Proyector' },
+            { value: 'Scanner', label: 'Scanner' },
+            { value: 'Televisor', label: 'Televisor' }
+        ]
+    },
+    {
+        label: 'Equipo eléctrico e industrial (EQE)',
+        options: [
+            { value: 'Generador eléctrico', label: 'Generador eléctrico' },
+            { value: 'UPS industrial', label: 'UPS industrial' },
+            { value: 'Tablero eléctrico', label: 'Tablero eléctrico' },
+            { value: 'Planta de oxígeno', label: 'Planta de oxígeno' }
+        ]
+    },
+    {
+        label: 'Equipo de climatización (EQC)',
+        options: [
+            { value: 'Aire acondicionado', label: 'Aire acondicionado' },
+            { value: 'Extractor de aire', label: 'Extractor de aire' },
+            { value: 'Ventilador industrial', label: 'Ventilador industrial' },
+            { value: 'Cuarto frío', label: 'Cuarto frío' }
+        ]
+    },
+    {
+        label: 'Mobiliario administrativo (MOB)',
+        options: [
+            { value: 'Escritorio', label: 'Escritorio' },
+            { value: 'Silla de oficina', label: 'Silla de oficina' },
+            { value: 'Archivador', label: 'Archivador' },
+            { value: 'Estantería', label: 'Estantería' },
+            { value: 'Mostrador', label: 'Mostrador' }
+        ]
+    },
+    {
+        label: 'Mobiliario hospitalario (MOH)',
+        options: [
+            { value: 'Cama clínica', label: 'Cama clínica' },
+            { value: 'Camilla', label: 'Camilla' },
+            { value: 'Silla de ruedas', label: 'Silla de ruedas' },
+            { value: 'Cuna neonatal', label: 'Cuna neonatal' },
+            { value: 'Velador', label: 'Velador' }
+        ]
+    },
+    {
+        label: 'Instrumental médico (INS)',
+        options: [
+            { value: 'Pinzas quirúrgicas', label: 'Pinzas quirúrgicas' },
+            { value: 'Tijeras quirúrgicas', label: 'Tijeras quirúrgicas' },
+            { value: 'Espéculo', label: 'Espéculo' },
+            { value: 'Laringoscopio', label: 'Laringoscopio' },
+            { value: 'Tensiómetro manual', label: 'Tensiómetro manual' }
+        ]
+    },
+    {
+        label: 'Vehículos (VEH)',
+        options: [
+            { value: 'Ambulancia', label: 'Ambulancia' },
+            { value: 'Vehículo administrativo', label: 'Vehículo administrativo' },
+            { value: 'Motocicleta institucional', label: 'Motocicleta institucional' }
+        ]
+    },
+    {
+        label: 'Herramientas y accesorios (HER)',
+        options: [
+            { value: 'Taladro', label: 'Taladro' },
+            { value: 'Soldadora', label: 'Soldadora' },
+            { value: 'Equipo de plomería', label: 'Equipo de plomería' }
+        ]
+    },
+    {
+        label: 'Libros y colecciones (LIB)',
+        options: [
+            { value: 'Bibliografía médica', label: 'Bibliografía médica' },
+            { value: 'Manual técnico impreso', label: 'Manual técnico impreso' }
+        ]
+    },
+    {
+        label: 'Otros bienes (OTR)',
+        options: [
+            { value: 'Otro bien', label: 'Otro bien' }
+        ]
+    }
+];
+
+const CATEGORIA_BY_NOMBRE: Record<string, { code: string; label: string }> = {
+    'Ventilador mecánico': { code: 'EQM', label: 'Equipo médico (EQM)' },
+    'Monitor de signos vitales': { code: 'EQM', label: 'Equipo médico (EQM)' },
+    Desfibrilador: { code: 'EQM', label: 'Equipo médico (EQM)' },
+    'Bomba de infusión': { code: 'EQM', label: 'Equipo médico (EQM)' },
+    Electrocardiógrafo: { code: 'EQM', label: 'Equipo médico (EQM)' },
+    'Bisturí eléctrico': { code: 'EQM', label: 'Equipo médico (EQM)' },
+    'Lámpara quirúrgica': { code: 'EQM', label: 'Equipo médico (EQM)' },
+    'Analizador de sangre': { code: 'EQL', label: 'Equipo de laboratorio (EQL)' },
+    Centrífuga: { code: 'EQL', label: 'Equipo de laboratorio (EQL)' },
+    Microscopio: { code: 'EQL', label: 'Equipo de laboratorio (EQL)' },
+    Autoclave: { code: 'EQL', label: 'Equipo de laboratorio (EQL)' },
+    'Agitador de laboratorio': { code: 'EQL', label: 'Equipo de laboratorio (EQL)' },
+    'Equipo de rayos X': { code: 'EQR', label: 'Equipo de rayos e imagen (EQR)' },
+    Tomógrafo: { code: 'EQR', label: 'Equipo de rayos e imagen (EQR)' },
+    Mamógrafo: { code: 'EQR', label: 'Equipo de rayos e imagen (EQR)' },
+    Ecógrafo: { code: 'EQR', label: 'Equipo de rayos e imagen (EQR)' },
+    'Computadora de escritorio': { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Laptop: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Tablet: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Impresora: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Servidor: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    'Switch de red': { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Router: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    Monitor: { code: 'EQI', label: 'Equipo informático (EQI)' },
+    'Teléfono fijo': { code: 'EQO', label: 'Equipo de oficina (EQO)' },
+    Fotocopiadora: { code: 'EQO', label: 'Equipo de oficina (EQO)' },
+    Proyector: { code: 'EQO', label: 'Equipo de oficina (EQO)' },
+    Scanner: { code: 'EQO', label: 'Equipo de oficina (EQO)' },
+    Televisor: { code: 'EQO', label: 'Equipo de oficina (EQO)' },
+    'Generador eléctrico': { code: 'EQE', label: 'Equipo eléctrico e industrial (EQE)' },
+    'UPS industrial': { code: 'EQE', label: 'Equipo eléctrico e industrial (EQE)' },
+    'Tablero eléctrico': { code: 'EQE', label: 'Equipo eléctrico e industrial (EQE)' },
+    'Planta de oxígeno': { code: 'EQE', label: 'Equipo eléctrico e industrial (EQE)' },
+    'Aire acondicionado': { code: 'EQC', label: 'Equipo de climatización (EQC)' },
+    'Extractor de aire': { code: 'EQC', label: 'Equipo de climatización (EQC)' },
+    'Ventilador industrial': { code: 'EQC', label: 'Equipo de climatización (EQC)' },
+    'Cuarto frío': { code: 'EQC', label: 'Equipo de climatización (EQC)' },
+    Escritorio: { code: 'MOB', label: 'Mobiliario administrativo (MOB)' },
+    'Silla de oficina': { code: 'MOB', label: 'Mobiliario administrativo (MOB)' },
+    Archivador: { code: 'MOB', label: 'Mobiliario administrativo (MOB)' },
+    Estantería: { code: 'MOB', label: 'Mobiliario administrativo (MOB)' },
+    Mostrador: { code: 'MOB', label: 'Mobiliario administrativo (MOB)' },
+    'Cama clínica': { code: 'MOH', label: 'Mobiliario hospitalario (MOH)' },
+    Camilla: { code: 'MOH', label: 'Mobiliario hospitalario (MOH)' },
+    'Silla de ruedas': { code: 'MOH', label: 'Mobiliario hospitalario (MOH)' },
+    'Cuna neonatal': { code: 'MOH', label: 'Mobiliario hospitalario (MOH)' },
+    Velador: { code: 'MOH', label: 'Mobiliario hospitalario (MOH)' },
+    'Pinzas quirúrgicas': { code: 'INS', label: 'Instrumental médico (INS)' },
+    'Tijeras quirúrgicas': { code: 'INS', label: 'Instrumental médico (INS)' },
+    Espéculo: { code: 'INS', label: 'Instrumental médico (INS)' },
+    Laringoscopio: { code: 'INS', label: 'Instrumental médico (INS)' },
+    'Tensiómetro manual': { code: 'INS', label: 'Instrumental médico (INS)' },
+    Ambulancia: { code: 'VEH', label: 'Vehículos (VEH)' },
+    'Vehículo administrativo': { code: 'VEH', label: 'Vehículos (VEH)' },
+    'Motocicleta institucional': { code: 'VEH', label: 'Vehículos (VEH)' },
+    Taladro: { code: 'HER', label: 'Herramientas y accesorios (HER)' },
+    Soldadora: { code: 'HER', label: 'Herramientas y accesorios (HER)' },
+    'Equipo de plomería': { code: 'HER', label: 'Herramientas y accesorios (HER)' },
+    'Bibliografía médica': { code: 'LIB', label: 'Libros y colecciones (LIB)' },
+    'Manual técnico impreso': { code: 'LIB', label: 'Libros y colecciones (LIB)' },
+    'Otro bien': { code: 'OTR', label: 'Otros bienes (OTR)' }
+};
+
+const CAT_MARCA: Record<string, string> = {
+    SAM: 'Samsung',
+    LEN: 'Lenovo',
+    HP: 'HP',
+    DEL: 'Dell',
+    PHI: 'Philips',
+    GEH: 'GE Healthcare',
+    SIE: 'Siemens Healthineers',
+    DRG: 'Dräger',
+    CNO: 'Canon',
+    EPS: 'Epson',
+    OTR: 'Otra marca'
+};
+
+const MARCAS_POR_CATEGORIA: Record<string, string[]> = {
+    EQM: ['PHI', 'GEH', 'DRG', 'OTR'],
+    EQL: ['SIE', 'GEH', 'OTR'],
+    EQR: ['GEH', 'SIE', 'PHI', 'OTR'],
+    EQI: ['SAM', 'LEN', 'HP', 'DEL', 'OTR'],
+    EQO: ['SAM', 'HP', 'CNO', 'EPS', 'OTR'],
+    EQE: ['OTR'],
+    EQC: ['OTR'],
+    MOB: ['OTR'],
+    MOH: ['OTR'],
+    INS: ['OTR'],
+    VEH: ['OTR'],
+    HER: ['OTR'],
+    LIB: ['OTR'],
+    OTR: ['OTR']
+};
+
+const customNombreSelectStyles = {
+    container: (provided: any) => ({
+        ...provided,
+        width: '100%'
+    }),
+    control: (provided: any, state: any) => ({
+        ...provided,
+        width: '100%',
+        minHeight: '2.5rem',
+        borderRadius: '0.5rem',
+        borderColor: state.isFocused ? '#2563eb' : '#cbd5e1',
+        boxShadow: state.isFocused ? '0 0 0 1px rgba(37, 99, 235, 0.3)' : provided.boxShadow,
+        '&:hover': {
+            borderColor: state.isFocused ? '#2563eb' : '#94a3b8'
+        },
+        fontSize: '0.875rem'
+    }),
+    menu: (provided: any) => ({ ...provided, zIndex: 50, width: '100%' }),
+    option: (provided: any, state: any) => ({
+        ...provided,
+        backgroundColor: state.isFocused ? '#eff6ff' : provided.backgroundColor,
+        color: '#0f172a'
+    }),
+    placeholder: (provided: any) => ({ ...provided, color: '#94a3b8' }),
+    singleValue: (provided: any) => ({ ...provided, color: '#0f172a' }),
+    valueContainer: (provided: any) => ({ ...provided, padding: '0.75rem 0.75rem' })
+};
+
+const isExistingNombreOption = (inputValue: string, options: NombreGroup[]) =>
+    options.some(group =>
+        group.options.some(option => option.value.toLowerCase() === inputValue.trim().toLowerCase())
+    );
+
 // Catálogos precargados
 const CATALOGOS = {
     color: [
@@ -65,12 +338,20 @@ const CATALOGOS = {
         { label: 'Comodato', value: 'Comodato' }
     ],
     categoriaActivo: [
-        { label: 'Equipo Médico', value: 'Equipo Médico' },
-        { label: 'Mobiliario', value: 'Mobiliario' },
-        { label: 'Equipo de Cómputo', value: 'Equipo de Cómputo' },
-        { label: 'Vehículo', value: 'Vehículo' },
-        { label: 'Herramienta', value: 'Herramienta' },
-        { label: 'Otros', value: 'Otros' }
+        { label: 'Equipo médico (EQM)', value: 'Equipo médico (EQM)' },
+        { label: 'Equipo de laboratorio (EQL)', value: 'Equipo de laboratorio (EQL)' },
+        { label: 'Equipo de rayos e imagen (EQR)', value: 'Equipo de rayos e imagen (EQR)' },
+        { label: 'Equipo informático (EQI)', value: 'Equipo informático (EQI)' },
+        { label: 'Equipo de oficina (EQO)', value: 'Equipo de oficina (EQO)' },
+        { label: 'Equipo eléctrico e industrial (EQE)', value: 'Equipo eléctrico e industrial (EQE)' },
+        { label: 'Equipo de climatización (EQC)', value: 'Equipo de climatización (EQC)' },
+        { label: 'Mobiliario administrativo (MOB)', value: 'Mobiliario administrativo (MOB)' },
+        { label: 'Mobiliario hospitalario (MOH)', value: 'Mobiliario hospitalario (MOH)' },
+        { label: 'Instrumental médico (INS)', value: 'Instrumental médico (INS)' },
+        { label: 'Vehículos (VEH)', value: 'Vehículos (VEH)' },
+        { label: 'Herramientas y accesorios (HER)', value: 'Herramientas y accesorios (HER)' },
+        { label: 'Libros y colecciones (LIB)', value: 'Libros y colecciones (LIB)' },
+        { label: 'Otros bienes (OTR)', value: 'Otros bienes (OTR)' }
     ],
     unidadMedida: [
         { label: 'Unidad', value: 'Unidad' },
@@ -84,17 +365,6 @@ const CATALOGOS = {
         { label: 'Malo', value: 'Malo' },
         { label: 'En Reparación', value: 'En Reparación' },
         { label: 'Dado de Baja', value: 'Dado de Baja' }
-    ],
-    marca: [
-        { label: 'Samsung', value: 'Samsung' },
-        { label: 'LG', value: 'LG' },
-        { label: 'HP', value: 'HP' },
-        { label: 'Dell', value: 'Dell' },
-        { label: 'Lenovo', value: 'Lenovo' },
-        { label: 'Philips', value: 'Philips' },
-        { label: 'GE', value: 'GE' },
-        { label: 'Siemens', value: 'Siemens' },
-        { label: 'Otros', value: 'Otros' }
     ],
     motivoIngreso: [
         { label: 'Adquisición Nueva', value: 'Adquisición Nueva' },
@@ -155,7 +425,101 @@ export const RegistrarActivo: React.FC = () => {
         ubicacion: ''
     });
 
+    const [nombreOptions, setNombreOptions] = useState<NombreGroup[]>(GROUPED_NOMBRE_OPTIONS);
+    const [selectedNombreOption, setSelectedNombreOption] = useState<NombreOption | null>(null);
+    const [marcaOptions, setMarcaOptions] = useState<{ label: string; value: string }[]>(
+        Object.values(CAT_MARCA).map(label => ({ label, value: label }))
+    );
+    const [categoriaBloqueada, setCategoriaBloqueada] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    const getCategoryCodeFromLabel = (categoryLabel: string): string => {
+        const match = categoryLabel.match(/\(([^)]+)\)$/);
+        return match ? match[1] : '';
+    };
+
+    const getMarcaOptionsForCategory = (categoryCode: string) => {
+        const allowedCodes = categoryCode ? MARCAS_POR_CATEGORIA[categoryCode] || ['OTR'] : Object.keys(CAT_MARCA);
+        return Object.entries(CAT_MARCA)
+            .filter(([code]) => allowedCodes.includes(code))
+            .map(([, label]) => ({ label, value: label }));
+    };
+
+    useEffect(() => {
+        const categoryCode = getCategoryCodeFromLabel(formData.categoriaActivo);
+        const filteredMarcas = getMarcaOptionsForCategory(categoryCode);
+        setMarcaOptions(filteredMarcas);
+
+        if (formData.marca && !filteredMarcas.some(option => option.value === formData.marca)) {
+            setFormData(prev => ({ ...prev, marca: '' }));
+        }
+    }, [formData.categoriaActivo]);
+
+    const generateCodigoInstitucional = (): string => {
+        const prefix = 'CI';
+        const year = new Date().getFullYear();
+        const existingNumbers = activos
+            .map(activo => activo.codigoInstitucional)
+            .filter(code => typeof code === 'string' && code.startsWith(`${prefix}-${year}-`))
+            .map(code => {
+                const match = code.match(/CI-\d{4}-(\d+)/);
+                return match ? Number(match[1]) : null;
+            })
+            .filter((value): value is number => typeof value === 'number' && !isNaN(value));
+
+        const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        return `${prefix}-${year}-${String(nextNumber).padStart(4, '0')}`;
+    };
+
+    useEffect(() => {
+        if (!formData.codigoInstitucional) {
+            setFormData(prev => ({
+                ...prev,
+                codigoInstitucional: generateCodigoInstitucional()
+            }));
+        }
+    }, [activos]);
+
+    const onCrearNombreOpcion = async (inputValue: string) => {
+        const newOption: NombreOption = { label: inputValue, value: inputValue };
+        const mappedCategory = CATEGORIA_BY_NOMBRE[inputValue];
+        const shouldLockCategory = !!mappedCategory;
+        const newCategoryValue = mappedCategory ? mappedCategory.label : 'Otros bienes (OTR)';
+
+        setNombreOptions(prev => {
+            const existingOtros = prev.find(group => group.label === 'Otros bienes (OTR)');
+
+            if (existingOtros) {
+                return prev.map(group =>
+                    group.label === 'Otros bienes (OTR)'
+                        ? { ...group, options: [...group.options, newOption] }
+                        : group
+                );
+            }
+
+            return [...prev, { label: 'Otros bienes (OTR)', options: [newOption] }];
+        });
+
+        setSelectedNombreOption(newOption);
+        setCategoriaBloqueada(shouldLockCategory);
+        setFormData(prev => ({
+            ...prev,
+            nombre: inputValue,
+            categoriaActivo: newCategoryValue
+        }));
+
+        try {
+            await fetch('/api/tipos-activo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nombre: inputValue })
+            });
+        } catch (error) {
+            console.error('Error guardando tipo de activo', error);
+        }
+    };
 
     // Calcular ValorTotal cuando cambia ValorUnitario
     useEffect(() => {
@@ -282,29 +646,55 @@ export const RegistrarActivo: React.FC = () => {
 
             <h1 className="text-3xl font-medium text-slate-800 dark:text-slate-100 mb-4">Registrar Activo</h1>
 
-            {/* Mensaje informativo */}
-            <Message
-                severity="info"
-                text="Cada activo se registra individualmente. Si recibió múltiples unidades del mismo bien, registre cada una por separado con su propio número de serie."
-                className="mb-4 w-full"
-            />
-
             <Card className="shadow-lg">
                 {/* SECCIÓN 1: Información General */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <h3 className="col-span-1 md:col-span-2 text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Información General
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div>
                         <label className="block text-sm font-medium mb-2">
                             Nombre <span className="text-red-500">*</span>
                         </label>
-                        <InputText
-                            value={formData.nombre}
-                            onChange={(e) => handleInputChange('nombre', e.target.value)}
+                        <CreatableSelect
+                            value={selectedNombreOption}
+                            options={nombreOptions}
                             placeholder="Ej: Monitor"
-                            className={`w-full ${getErrorClass('nombre')}`}
+                            formatCreateLabel={(inputValue) => `+ Crear "${inputValue}"`}
+                            isValidNewOption={(inputValue) =>
+                                !!inputValue.trim() && !isExistingNombreOption(inputValue, nombreOptions)
+                            }
+                            filterOption={(candidate, input) =>
+                                candidate.label.toLowerCase().includes(input.toLowerCase())
+                            }
+                            onChange={(option: SingleValue<NombreOption>) => {
+                                if (!option) {
+                                    setSelectedNombreOption(null);
+                                    setCategoriaBloqueada(false);
+                                    setFormData(prev => ({ ...prev, nombre: '' }));
+                                    return;
+                                }
+
+                                const mappedCategory = CATEGORIA_BY_NOMBRE[option.value];
+                                const shouldLockCategory = !!mappedCategory;
+                                const newCategoryValue = mappedCategory ? mappedCategory.label : formData.categoriaActivo;
+                                setSelectedNombreOption(option);
+                                setCategoriaBloqueada(shouldLockCategory);
+                                setFormData(prev => ({
+                                    ...prev,
+                                    nombre: option.value,
+                                    categoriaActivo: newCategoryValue
+                                }));
+                            }}
+                            onCreateOption={onCrearNombreOpcion}
+                            styles={customNombreSelectStyles}
+                            classNamePrefix="react-select"
+                            isClearable
+                            isSearchable
+                            createOptionPosition="first"
+                            noOptionsMessage={() => 'Escribe para crear o buscar...'}
                         />
                         {errors.nombre && <small className="text-red-500">{errors.nombre}</small>}
                     </div>
@@ -316,7 +706,7 @@ export const RegistrarActivo: React.FC = () => {
                         <Dropdown
                             value={formData.marca}
                             onChange={(e: DropdownChangeEvent) => handleInputChange('marca', e.value)}
-                            options={CATALOGOS.marca}
+                            options={marcaOptions}
                             placeholder="Seleccione una marca"
                             className={`w-full ${getErrorClass('marca')}`}
                         />
@@ -374,15 +764,17 @@ export const RegistrarActivo: React.FC = () => {
                             className="w-full"
                         />
                     </div>
+                    </div>
                 </div>
 
                 <Divider />
 
                 {/* SECCIÓN 2: Identificación */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <h3 className="col-span-1 md:col-span-2 text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Identificación
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div>
                         <label className="block text-sm font-medium mb-2">Código Institucional</label>
@@ -427,15 +819,17 @@ export const RegistrarActivo: React.FC = () => {
                             className="w-full"
                         />
                     </div>
+                    </div>
                 </div>
 
                 <Divider />
 
                 {/* SECCIÓN 3: Clasificación */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <h3 className="col-span-1 md:col-span-2 text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Clasificación
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div>
                         <label className="block text-sm font-medium mb-2">
@@ -447,6 +841,7 @@ export const RegistrarActivo: React.FC = () => {
                             options={CATALOGOS.categoriaActivo}
                             placeholder="Seleccione una categoría"
                             className={`w-full ${getErrorClass('categoriaActivo')}`}
+                            disabled={categoriaBloqueada}
                         />
                         {errors.categoriaActivo && <small className="text-red-500">{errors.categoriaActivo}</small>}
                     </div>
@@ -525,15 +920,17 @@ export const RegistrarActivo: React.FC = () => {
                         />
                         {errors.ubicacion && <small className="text-red-500">{errors.ubicacion}</small>}
                     </div>
+                    </div>
                 </div>
 
                 <Divider />
 
                 {/* SECCIÓN 4: Valores y Fechas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <h3 className="col-span-1 md:col-span-2 text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Valores y Fechas
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div>
                         <label className="block text-sm font-medium mb-2">
@@ -636,15 +1033,17 @@ export const RegistrarActivo: React.FC = () => {
                             className="w-full"
                         />
                     </div>
+                    </div>
                 </div>
 
                 <Divider />
 
                 {/* SECCIÓN 5: Responsables */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <h3 className="col-span-1 md:col-span-2 text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Responsables
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div>
                         <label className="block text-sm font-medium mb-2">Responsable de Entrega</label>
@@ -664,6 +1063,7 @@ export const RegistrarActivo: React.FC = () => {
                             placeholder="Nombre del administrador"
                             className="w-full"
                         />
+                    </div>
                     </div>
                 </div>
 

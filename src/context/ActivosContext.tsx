@@ -67,9 +67,32 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem('activos_hep', JSON.stringify(activos));
     }, [activos]);
 
+    const generateCodigoInstitucional = (existingActivos: Activo[]): string => {
+        const prefix = 'CI';
+        const year = new Date().getFullYear();
+        const existingNumbers = existingActivos
+            .map(activo => activo.codigoInstitucional)
+            .filter(code => typeof code === 'string' && code.startsWith(`${prefix}-${year}-`))
+            .map(code => {
+                const match = code.match(/CI-\d{4}-(\d+)/);
+                return match ? Number(match[1]) : null;
+            })
+            .filter((value): value is number => typeof value === 'number' && !isNaN(value));
+
+        const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        return `${prefix}-${year}-${String(nextNumber).padStart(4, '0')}`;
+    };
+
     const agregarActivo = (activo: Omit<Activo, 'idActivo'>) => {
+        const codigoInstitucional =
+            !activo.codigoInstitucional ||
+            activos.some(a => a.codigoInstitucional === activo.codigoInstitucional)
+                ? generateCodigoInstitucional(activos)
+                : activo.codigoInstitucional;
+
         const nuevoActivo: Activo = {
             ...activo,
+            codigoInstitucional,
             idActivo: activos.length > 0 ? Math.max(...activos.map(a => a.idActivo)) + 1 : 1
         };
         setActivos([...activos, nuevoActivo]);

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import classNames from 'classnames';
 import { useLayout } from './context/layoutcontext';
 
 export const AppTopbar: React.FC = () => {
