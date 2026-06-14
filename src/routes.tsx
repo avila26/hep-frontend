@@ -6,6 +6,8 @@ import ErrorPage from './pages/auth/Error';
 import Access from './pages/auth/Access';
 import NotFound from './pages/notfound/NotFound';
 import PlaceholderPage from './pages/PlaceholderPage';
+import RegistrarTraslado from './pages/traslados/RegistrarTraslado';
+import PendientesTraslados from './pages/traslados/Pendientes';
 import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
 
@@ -55,8 +57,8 @@ export const routes: RouteObject[] = [
                 path: 'traslados',
                 children: [
                     { index: true, element: <PlaceholderPage title="Traslados" /> },
-                    { path: 'registrar', element: <PlaceholderPage title="Registrar Traslado" /> },
-                    { path: 'pendientes', element: <PlaceholderPage title="Traslados Pendientes" /> },
+                    { path: 'registrar', element: <RegistrarTraslado /> },
+                    { path: 'pendientes', element: <PendientesTraslados /> },
                     { path: 'ejecutados', element: <PlaceholderPage title="Traslados Ejecutados" /> },
                     { path: 'historial', element: <PlaceholderPage title="Historial de Traslados" /> }
                 ]
