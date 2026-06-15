@@ -56,7 +56,7 @@ export const ConsultarActivos: React.FC = () => {
         activo.codigoInstitucional.toLowerCase().includes(searchValue.toLowerCase())
     );
 
-    // Columna con acciones
+    // Columna con accion
     const actionBodyTemplate = (rowData: Activo) => (
         <div className="flex gap-2">
             <Button
@@ -65,13 +65,6 @@ export const ConsultarActivos: React.FC = () => {
                 severity="info"
                 onClick={() => setSelectedActivo(rowData)}
                 title="Ver detalles"
-            />
-            <Button
-                icon="pi pi-pencil"
-                rounded
-                severity="warning"
-                onClick={() => console.log('Editar', rowData.idActivo)}
-                title="Editar"
             />
         </div>
     );
@@ -184,7 +177,7 @@ export const ConsultarActivos: React.FC = () => {
                             className="text-right"
                         />
                         <Column
-                            header="Acciones"
+                            header="Acción"
                             body={actionBodyTemplate}
                             style={{ width: '120px' }}
                             className="text-center"

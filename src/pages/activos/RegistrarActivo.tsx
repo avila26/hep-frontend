@@ -360,11 +360,9 @@ const CATALOGOS = {
         { label: 'Kit', value: 'Kit' }
     ],
     estadoActivo: [
-        { label: 'Bueno', value: 'Bueno' },
-        { label: 'Regular', value: 'Regular' },
-        { label: 'Malo', value: 'Malo' },
-        { label: 'En Reparación', value: 'En Reparación' },
-        { label: 'Dado de Baja', value: 'Dado de Baja' }
+        { label: 'Bueno', value: 'BUE' },
+        { label: 'Regular', value: 'REG' },
+        { label: 'Malo', value: 'MAL' }
     ],
     motivoIngreso: [
         { label: 'Adquisición Nueva', value: 'Adquisición Nueva' },
