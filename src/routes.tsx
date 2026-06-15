@@ -10,6 +10,7 @@ import RegistrarTraslado from './pages/traslados/RegistrarTraslado';
 import PendientesTraslados from './pages/traslados/Pendientes';
 import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
+import CargaMasiva from './pages/activos/CargaMasiva';
 
 export const routes: RouteObject[] = [
     {
@@ -47,7 +48,7 @@ export const routes: RouteObject[] = [
                     { index: true, element: <PlaceholderPage title="Activos" /> },
                     { path: 'registrar', element: <RegistrarActivo /> },
                     { path: 'consultar', element: <ConsultarActivos /> },
-                    { path: 'carga-masiva', element: <PlaceholderPage title="Carga Masiva" /> },
+                    { path: 'carga-masiva', element: <CargaMasiva /> },
                     { path: 'codigo-barras', element: <PlaceholderPage title="Código de Barras" /> },
                     { path: 'hoja-vida', element: <PlaceholderPage title="Hoja de Vida" /> }
                 ]

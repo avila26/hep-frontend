@@ -12,6 +12,7 @@ import CreatableSelect from 'react-select/creatable';
 import type { SingleValue } from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import { useActivos } from '../../context/ActivosContext';
+import { UbicacionCascada } from '../../components/UbicacionCascada';
 
 interface Activo {
     idActivo?: number;
@@ -294,7 +295,7 @@ const customNombreSelectStyles = {
     control: (provided: any, state: any) => ({
         ...provided,
         width: '100%',
-        minHeight: '2.5rem',
+        minHeight: '2rem',
         borderRadius: '0.5rem',
         borderColor: state.isFocused ? '#2563eb' : '#cbd5e1',
         boxShadow: state.isFocused ? '0 0 0 1px rgba(37, 99, 235, 0.3)' : provided.boxShadow,
@@ -373,15 +374,6 @@ const CATALOGOS = {
         { label: 'Lineal', value: 'Lineal' },
         { label: 'Acelerada', value: 'Acelerada' },
         { label: 'No Aplica', value: 'No Aplica' }
-    ],
-    ubicacion: [
-        { label: 'Consulta Externa', value: 'Consulta Externa' },
-        { label: 'Emergencia', value: 'Emergencia' },
-        { label: 'UCI', value: 'UCI' },
-        { label: 'Quirófano', value: 'Quirófano' },
-        { label: 'Bodega', value: 'Bodega' },
-        { label: 'Administración', value: 'Administración' },
-        { label: 'Laboratorio', value: 'Laboratorio' }
     ]
 };
 
@@ -642,9 +634,9 @@ export const RegistrarActivo: React.FC = () => {
         <div className="p-4">
             <Toast ref={toast} />
 
-            <h1 className="text-3xl font-medium text-slate-800 dark:text-slate-100 mb-4">Registrar Activo</h1>
+            <h1 className="text-2xl font-medium text-slate-800 dark:text-slate-100 mb-2">Registrar Activo</h1>
 
-            <Card className="shadow-lg">
+            <Card className="shadow-lg pt-0">
                 {/* SECCIÓN 1: Información General */}
                 <div className="mb-8">
                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
@@ -904,26 +896,48 @@ export const RegistrarActivo: React.FC = () => {
                             className="w-full"
                         />
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-2">
-                            Ubicación <span className="text-red-500">*</span>
-                        </label>
-                        <Dropdown
-                            value={formData.ubicacion}
-                            onChange={(e: DropdownChangeEvent) => handleInputChange('ubicacion', e.value)}
-                            options={CATALOGOS.ubicacion}
-                            placeholder="Seleccione ubicación"
-                            className={`w-full ${getErrorClass('ubicacion')}`}
-                        />
-                        {errors.ubicacion && <small className="text-red-500">{errors.ubicacion}</small>}
-                    </div>
                     </div>
                 </div>
 
                 <Divider />
 
-                {/* SECCIÓN 4: Valores y Fechas */}
+                {/* SECCIÓN 4: Ubicación y Responsables */}
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
+                        Ubicación y Responsables
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <UbicacionCascada
+                            value={formData.ubicacion}
+                            onChange={(ruta) => handleInputChange('ubicacion', ruta)}
+                            error={errors.ubicacion}
+                        />
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Responsable de Entrega</label>
+                            <InputText
+                                value={formData.responsableEntrega}
+                                onChange={(e) => handleInputChange('responsableEntrega', e.target.value)}
+                                placeholder="Nombre del responsable"
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Administrador del Proceso</label>
+                            <InputText
+                                value={formData.administradorDelProceso}
+                                onChange={(e) => handleInputChange('administradorDelProceso', e.target.value)}
+                                placeholder="Nombre del administrador"
+                                className="w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Divider />
+
+                {/* SECCIÓN 5: Valores y Fechas */}
                 <div className="mb-8">
                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
                         Valores y Fechas
@@ -1028,37 +1042,6 @@ export const RegistrarActivo: React.FC = () => {
                             onChange={(e) => handleInputChange('fechaDNS', e.value?.toISOString())}
                             dateFormat="dd/mm/yy"
                             showIcon
-                            className="w-full"
-                        />
-                    </div>
-                    </div>
-                </div>
-
-                <Divider />
-
-                {/* SECCIÓN 5: Responsables */}
-                <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
-                        Responsables
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Responsable de Entrega</label>
-                        <InputText
-                            value={formData.responsableEntrega}
-                            onChange={(e) => handleInputChange('responsableEntrega', e.target.value)}
-                            placeholder="Nombre del responsable"
-                            className="w-full"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Administrador del Proceso</label>
-                        <InputText
-                            value={formData.administradorDelProceso}
-                            onChange={(e) => handleInputChange('administradorDelProceso', e.target.value)}
-                            placeholder="Nombre del administrador"
                             className="w-full"
                         />
                     </div>

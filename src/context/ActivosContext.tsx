@@ -34,24 +34,60 @@ export interface Activo {
     ubicacion: string;
 }
 
+export interface ResultadoImportacion {
+    numeroFila: number;
+    exitoso: boolean;
+    mensajeError?: string;
+    datosFila: Record<string, unknown>;
+}
+
+export interface CargaMasivaLog {
+    idCarga: number;
+    fechaCarga: Date;
+    nombreArchivo: string;
+    totalFilas: number;
+    filasExitosas: number;
+    filasConError: number;
+    estado: 'COMPLETADO' | 'COMPLETADO_CON_ERRORES' | 'FALLIDO';
+    resultados: ResultadoImportacion[];
+}
+
 interface ActivosContextType {
     activos: Activo[];
+    cargasMasivas: CargaMasivaLog[];
     agregarActivo: (activo: Omit<Activo, 'idActivo'>) => void;
     eliminarActivo: (idActivo: number) => void;
     actualizarActivo: (activo: Activo) => void;
+    registrarCarga: (log: Omit<CargaMasivaLog, 'idCarga'>) => void;
 }
 
 const ActivosContext = createContext<ActivosContextType | undefined>(undefined);
 
+const generateCodigoInstitucional = (existingActivos: Activo[]): string => {
+    const prefix = 'CI';
+    const year = new Date().getFullYear();
+    const existingNumbers = existingActivos
+        .map(activo => activo.codigoInstitucional)
+        .filter(code => typeof code === 'string' && code.startsWith(`${prefix}-${year}-`))
+        .map(code => {
+            const match = code.match(/CI-\d{4}-(\d+)/);
+            return match ? Number(match[1]) : null;
+        })
+        .filter((value): value is number => typeof value === 'number' && !isNaN(value));
+
+    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    return `${prefix}-${year}-${String(nextNumber).padStart(4, '0')}`;
+};
+
 export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [activos, setActivos] = useState<Activo[]>([]);
+    const [cargasMasivas, setCargasMasivas] = useState<CargaMasivaLog[]>([]);
 
-    // Cargar activos del localStorage al montar
     useEffect(() => {
         const activosGuardados = localStorage.getItem('activos_hep');
         if (activosGuardados) {
             try {
-                const activosParsed = JSON.parse(activosGuardados).map((a: any) => ({
+                const activosParsed = JSON.parse(activosGuardados).map((a: Activo) => ({
                     ...a,
                     fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null
                 }));
@@ -60,54 +96,69 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 console.error('Error al cargar activos:', error);
             }
         }
+
+        const cargasGuardadas = localStorage.getItem('cargas_masivas_hep');
+        if (cargasGuardadas) {
+            try {
+                const cargasParsed = JSON.parse(cargasGuardadas).map((carga: CargaMasivaLog) => ({
+                    ...carga,
+                    fechaCarga: new Date(carga.fechaCarga)
+                }));
+                setCargasMasivas(cargasParsed);
+            } catch (error) {
+                console.error('Error al cargar historial de cargas masivas:', error);
+            }
+        }
     }, []);
 
-    // Guardar activos en localStorage cuando cambien
     useEffect(() => {
         localStorage.setItem('activos_hep', JSON.stringify(activos));
     }, [activos]);
 
-    const generateCodigoInstitucional = (existingActivos: Activo[]): string => {
-        const prefix = 'CI';
-        const year = new Date().getFullYear();
-        const existingNumbers = existingActivos
-            .map(activo => activo.codigoInstitucional)
-            .filter(code => typeof code === 'string' && code.startsWith(`${prefix}-${year}-`))
-            .map(code => {
-                const match = code.match(/CI-\d{4}-(\d+)/);
-                return match ? Number(match[1]) : null;
-            })
-            .filter((value): value is number => typeof value === 'number' && !isNaN(value));
-
-        const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-        return `${prefix}-${year}-${String(nextNumber).padStart(4, '0')}`;
-    };
+    useEffect(() => {
+        localStorage.setItem('cargas_masivas_hep', JSON.stringify(cargasMasivas));
+    }, [cargasMasivas]);
 
     const agregarActivo = (activo: Omit<Activo, 'idActivo'>) => {
-        const codigoInstitucional =
-            !activo.codigoInstitucional ||
-            activos.some(a => a.codigoInstitucional === activo.codigoInstitucional)
-                ? generateCodigoInstitucional(activos)
-                : activo.codigoInstitucional;
+        setActivos(prev => {
+            const codigoInstitucional =
+                !activo.codigoInstitucional ||
+                prev.some(a => a.codigoInstitucional === activo.codigoInstitucional)
+                    ? generateCodigoInstitucional(prev)
+                    : activo.codigoInstitucional;
 
-        const nuevoActivo: Activo = {
-            ...activo,
-            codigoInstitucional,
-            idActivo: activos.length > 0 ? Math.max(...activos.map(a => a.idActivo)) + 1 : 1
-        };
-        setActivos([...activos, nuevoActivo]);
+            const nuevoActivo: Activo = {
+                ...activo,
+                codigoInstitucional,
+                idActivo: prev.length > 0 ? Math.max(...prev.map(a => a.idActivo)) + 1 : 1
+            };
+
+            return [...prev, nuevoActivo];
+        });
     };
 
     const eliminarActivo = (idActivo: number) => {
-        setActivos(activos.filter(a => a.idActivo !== idActivo));
+        setActivos(prev => prev.filter(a => a.idActivo !== idActivo));
     };
 
     const actualizarActivo = (activo: Activo) => {
-        setActivos(activos.map(a => (a.idActivo === activo.idActivo ? activo : a)));
+        setActivos(prev => prev.map(a => (a.idActivo === activo.idActivo ? activo : a)));
+    };
+
+    const registrarCarga = (log: Omit<CargaMasivaLog, 'idCarga'>) => {
+        setCargasMasivas(prev => {
+            const nuevaCarga: CargaMasivaLog = {
+                ...log,
+                idCarga: prev.length > 0 ? Math.max(...prev.map(c => c.idCarga)) + 1 : 1
+            };
+            return [nuevaCarga, ...prev];
+        });
     };
 
     return (
-        <ActivosContext.Provider value={{ activos, agregarActivo, eliminarActivo, actualizarActivo }}>
+        <ActivosContext.Provider
+            value={{ activos, cargasMasivas, agregarActivo, eliminarActivo, actualizarActivo, registrarCarga }}
+        >
             {children}
         </ActivosContext.Provider>
     );
