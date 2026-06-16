@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Calendar } from 'primereact/calendar';
+import { Dialog } from 'primereact/dialog';
+import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext';
 
+<<<<<<< HEAD
 interface Traslado {
     id: string;
     codigoActivo: string;
@@ -82,6 +86,11 @@ export const MOCK_HISTORIAL: Traslado[] = [
     }
 ];
 
+=======
+/* ------------------------------------------------------------------ */
+/*  Utilidad de Formato de Fecha                                     */
+/* ------------------------------------------------------------------ */
+>>>>>>> cd32ff7 (cambios en traslado)
 const formatDate = (d: Date | string | null | undefined): string => {
     if (!d) return '—';
     const date = d instanceof Date ? d : new Date(d);
@@ -92,18 +101,47 @@ const formatDate = (d: Date | string | null | undefined): string => {
     return `${day}/${month}/${year}`;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Componente Principal                                              */
+/* ------------------------------------------------------------------ */
 const HistorialTraslados: React.FC = () => {
+    const { traslados } = useTrasladosContext();
+    const location = useLocation();
+
     const [globalFilter, setGlobalFilter] = useState('');
     const [fechaDesde, setFechaDesde] = useState<Date | null>(null);
     const [fechaHasta, setFechaHasta] = useState<Date | null>(null);
 
-    const trasladosFiltrados = MOCK_HISTORIAL.filter(t => {
-        const fecha = t.fechaTraslado instanceof Date ? t.fechaTraslado : new Date(t.fechaTraslado);
+    // Estados para el modal de detalle
+    const [selected, setSelected] = useState<TrasladoHEP | null>(null);
+    const [detailVisible, setDetailVisible] = useState<boolean>(false);
+
+    // Efecto para verificar si se pasa un codigoActivo por el state de navegación
+    useEffect(() => {
+        if (location.state?.codigoActivo) {
+            setGlobalFilter(location.state.codigoActivo);
+        }
+    }, [location.state]);
+
+    // Filtrado local por rango de fechas
+    const trasladosFiltrados = traslados.filter(t => {
+        if (!t.fechaTraslado) return true;
+        // Convertir YYYY-MM-DD a objeto Date local
+        const [year, month, day] = t.fechaTraslado.split('-').map(Number);
+        const fecha = new Date(year, month - 1, day);
+
         const matchDesde = fechaDesde ? fecha >= fechaDesde : true;
         const matchHasta = fechaHasta ? fecha <= fechaHasta : true;
         return matchDesde && matchHasta;
     });
 
+    const estadoSeverity = (estado: string): 'warning' | 'success' | 'info' => {
+        if (estado === 'Pendiente') return 'warning';
+        if (estado === 'Ejecutado') return 'success';
+        return 'info';
+    };
+
+    /* ---------- templates de DataTable --------------------------- */
     const header = (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -140,22 +178,32 @@ const HistorialTraslados: React.FC = () => {
         </div>
     );
 
-    const estadoSeverity = (estado: string): 'warning' | 'success' | 'info' => {
-        if (estado === 'Pendiente') return 'warning';
-        if (estado === 'Ejecutado') return 'success';
-        return 'info';
-    };
-
-    const estadoBody = (row: Traslado) => (
+    const estadoBody = (row: TrasladoHEP) => (
         <Tag value={row.estado} severity={estadoSeverity(row.estado)} />
     );
 
-    const fechaBody = (row: Traslado) => <span>{formatDate(row.fechaTraslado)}</span>;
+    const fechaBody = (row: TrasladoHEP) => <span>{formatDate(row.fechaTraslado)}</span>;
 
-    const accionesBody = (_row: Traslado) => (
+    const fechaEjecucionBody = (row: TrasladoHEP) => (
+        <span>{row.fechaEjecucion ? formatDate(row.fechaEjecucion) : '—'}</span>
+    );
+
+    const accionesBody = (row: TrasladoHEP) => (
         <div style={{ display: 'flex', gap: 8 }}>
-            <Button icon="pi pi-eye" className="p-button-rounded p-button-info" title="Ver detalle" />
-            <Button icon="pi pi-file-pdf" className="p-button-rounded p-button-secondary" title="Descargar acta" />
+            <Button 
+                icon="pi pi-eye" 
+                className="p-button-rounded p-button-info" 
+                title="Ver detalle" 
+                onClick={() => {
+                    setSelected(row);
+                    setDetailVisible(true);
+                }}
+            />
+            <Button 
+                icon="pi pi-file-pdf" 
+                className="p-button-rounded p-button-secondary" 
+                title="Descargar acta" 
+            />
         </div>
     );
 
@@ -165,6 +213,20 @@ const HistorialTraslados: React.FC = () => {
                 value={trasladosFiltrados}
                 header={header}
                 globalFilter={globalFilter}
+                globalFilterFields={[
+                    'referencia',
+                    'codigoActivo',
+                    'nombreActivo',
+                    'categoria',
+                    'ubicacionOrigen',
+                    'ubicacionDestino',
+                    'responsableAnterior',
+                    'nuevoResponsable',
+                    'motivo',
+                    'ejecutadoPor',
+                    'observaciones',
+                    'estado'
+                ]}
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25]}
@@ -173,16 +235,50 @@ const HistorialTraslados: React.FC = () => {
                 stripedRows
             >
                 <Column field="codigoActivo" header="Código del activo" sortable />
+                <Column field="referencia" header="Referencia" sortable />
                 <Column field="nombreActivo" header="Nombre del activo" sortable />
                 <Column field="ubicacionOrigen" header="Origen" sortable />
                 <Column field="ubicacionDestino" header="Destino" sortable />
                 <Column field="responsableAnterior" header="Resp. anterior" sortable />
                 <Column field="nuevoResponsable" header="Nuevo resp." sortable />
                 <Column header="Fecha traslado" body={fechaBody} sortable />
+                <Column header="Fecha ejecución" body={fechaEjecucionBody} sortable />
                 <Column field="motivo" header="Motivo" />
+                <Column field="ejecutadoPor" header="Ejecutado por" sortable />
                 <Column header="Estado" body={estadoBody} sortable />
                 <Column header="Acciones" body={accionesBody} />
             </DataTable>
+
+            {/* Diálogo de Detalle */}
+            <Dialog 
+                header="Detalle de Traslado" 
+                visible={detailVisible} 
+                style={{ width: '560px' }} 
+                modal 
+                onHide={() => setDetailVisible(false)}
+            >
+                {selected ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <p><strong>Referencia:</strong> {selected.referencia}</p>
+                        <p><strong>Código Activo:</strong> {selected.codigoActivo}</p>
+                        <p><strong>Nombre Activo:</strong> {selected.nombreActivo}</p>
+                        <p><strong>Categoría:</strong> {selected.categoria}</p>
+                        <p><strong>Ubicación de Origen:</strong> {selected.ubicacionOrigen}</p>
+                        <p><strong>Ubicación de Destino:</strong> {selected.ubicacionDestino}</p>
+                        <p><strong>Responsable Anterior:</strong> {selected.responsableAnterior}</p>
+                        <p><strong>Nuevo Responsable:</strong> {selected.nuevoResponsable}</p>
+                        <p><strong>Fecha Traslado:</strong> {formatDate(selected.fechaTraslado)}</p>
+                        <p><strong>Fecha Ejecución:</strong> {selected.fechaEjecucion ? formatDate(selected.fechaEjecucion) : '—'}</p>
+                        <p><strong>Ejecutado por:</strong> {selected.ejecutadoPor || '—'}</p>
+                        <p><strong>Motivo:</strong> {selected.motivo}</p>
+                        <p><strong>Observaciones:</strong> {selected.observaciones || 'Sin observaciones'}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                            <strong>Estado:</strong>
+                            <Tag value={selected.estado} severity={estadoSeverity(selected.estado)} />
+                        </div>
+                    </div>
+                ) : null}
+            </Dialog>
         </div>
     );
 };

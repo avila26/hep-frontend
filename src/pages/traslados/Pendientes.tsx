@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
@@ -6,7 +6,9 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
+import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext';
 
+<<<<<<< HEAD
 export interface Traslado {
     id: string;
     codigoActivo: string;
@@ -71,6 +73,11 @@ export const MOCK_TRASLADOS: Traslado[] = [
     }
 ];
 
+=======
+/* ------------------------------------------------------------------ */
+/*  Utilidad de Formato de Fecha                                     */
+/* ------------------------------------------------------------------ */
+>>>>>>> cd32ff7 (cambios en traslado)
 const formatDate = (d: Date | string | null | undefined): string => {
     if (!d) return '—';
     const date = d instanceof Date ? d : new Date(d);
@@ -81,16 +88,62 @@ const formatDate = (d: Date | string | null | undefined): string => {
     return `${day}/${month}/${year}`;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Componente Principal                                              */
+/* ------------------------------------------------------------------ */
 const PendientesTraslados: React.FC = () => {
+    const { pendientes, ejecutarTraslado } = useTrasladosContext();
     const [globalFilter, setGlobalFilter] = useState('');
-    console.log('PendientesTraslados: render');
-
-    const [trasladosList, setTrasladosList] = useState<Traslado[]>(MOCK_TRASLADOS);
-    const traslados = useMemo(() => trasladosList.filter(t => t.estado === 'Pendiente'), [trasladosList]);
-    const [selected, setSelected] = useState<Traslado | null>(null);
+    const [selected, setSelected] = useState<TrasladoHEP | null>(null);
     const [detailVisible, setDetailVisible] = useState(false);
+
+    // Estado del diálogo de confirmación de ejecución
+    const [execDialogVisible, setExecDialogVisible] = useState(false);
+    const [execTarget, setExecTarget] = useState<TrasladoHEP | null>(null);
+    const [ejecutadoPor, setEjecutadoPor] = useState('');
+
     const toast = useRef<Toast>(null);
 
+    // Abrir modal de detalle
+    const viewDetail = (row: TrasladoHEP) => {
+        setSelected(row);
+        setDetailVisible(true);
+    };
+
+    // Abrir modal de ejecución
+    const openExecDialog = (row: TrasladoHEP) => {
+        setExecTarget(row);
+        setEjecutadoPor('');
+        setExecDialogVisible(true);
+    };
+
+    // Confirmar la ejecución del traslado
+    const handleConfirmExec = () => {
+        if (!ejecutadoPor.trim()) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Falta información',
+                detail: 'El nombre del responsable de ejecución es obligatorio.',
+                life: 3000
+            });
+            return;
+        }
+
+        if (execTarget) {
+            ejecutarTraslado(execTarget.id, ejecutadoPor.trim());
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Traslado Ejecutado',
+                detail: `El traslado de ${execTarget.nombreActivo} (Ref: ${execTarget.referencia}) se ha ejecutado con éxito.`,
+                life: 3000
+            });
+            setExecDialogVisible(false);
+            setExecTarget(null);
+            setEjecutadoPor('');
+        }
+    };
+
+    /* ---------- templates de DataTable --------------------------- */
     const header = (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -99,52 +152,62 @@ const PendientesTraslados: React.FC = () => {
             </div>
             <span className="p-input-icon-left">
                 <i className="pi pi-search" />
-                <InputText type="search" value={globalFilter} onChange={e => setGlobalFilter(e.target.value)} placeholder="Buscar..." />
+                <InputText 
+                    type="search" 
+                    value={globalFilter} 
+                    onChange={e => setGlobalFilter(e.target.value)} 
+                    placeholder="Buscar..." 
+                />
             </span>
         </div>
     );
 
-    const estadoBody = (row: Traslado) => (
-        <Tag value={row.estado} severity={row.estado === 'Pendiente' ? 'warning' : 'success'} />
+    const estadoBody = (row: TrasladoHEP) => (
+        <Tag value={row.estado} severity="warning" />
     );
 
-    const fechaBody = (row: Traslado) => <span>{formatDate(row.fechaTraslado)}</span>;
+    const fechaBody = (row: TrasladoHEP) => <span>{formatDate(row.fechaTraslado)}</span>;
 
-    const viewDetail = (row: Traslado) => {
-        setSelected(row);
-        setDetailVisible(true);
-    };
-
-    const approve = (row: Traslado) => {
-        setTrasladosList(prev => prev.map(t => (t.id === row.id ? { ...t, estado: 'Aprobado' } : t)));
-        toast.current?.show({ severity: 'success', summary: 'Traslado aprobado', detail: `Ref: ${row.codigoActivo}`, life: 3000 });
-    };
-
-    const accionesBody = (row: Traslado) => (
+    const accionesBody = (row: TrasladoHEP) => (
         <div style={{ display: 'flex', gap: 8 }}>
-            <Button icon="pi pi-eye" className="p-button-rounded p-button-info" aria-label="Ver detalle" onClick={() => viewDetail(row)} tooltip="Ver detalle" />
-            <Button icon="pi pi-check-circle" className="p-button-rounded p-button-success" aria-label="Aprobar traslado" onClick={() => approve(row)} tooltip="Aprobar traslado" />
+            <Button 
+                icon="pi pi-eye" 
+                severity="info"
+                rounded
+                aria-label="Ver detalle" 
+                onClick={() => viewDetail(row)} 
+                tooltip="Ver detalle" 
+            />
+            <Button 
+                icon="pi pi-play-circle" 
+                severity="success"
+                rounded
+                aria-label="Ejecutar traslado" 
+                onClick={() => openExecDialog(row)} 
+                tooltip="Ejecutar" 
+            />
         </div>
     );
 
     return (
         <div className="p-4">
-            <div style={{ marginBottom: 12, padding: 8, background: '#f3f4f6', borderRadius: 6 }}>
-                <strong>DEBUG:</strong> Componente <em>PendientesTraslados</em> cargado.
-            </div>
             <Toast ref={toast} />
+
             <DataTable
-                value={traslados}
+                value={pendientes}
                 header={header}
                 globalFilter={globalFilter}
                 globalFilterFields={[
+                    'referencia',
                     'codigoActivo',
                     'nombreActivo',
+                    'categoria',
                     'ubicacionOrigen',
                     'ubicacionDestino',
                     'responsableAnterior',
                     'nuevoResponsable',
-                    'motivo'
+                    'motivo',
+                    'observaciones'
                 ]}
                 paginator
                 rows={10}
@@ -154,6 +217,7 @@ const PendientesTraslados: React.FC = () => {
                 stripedRows
             >
                 <Column field="codigoActivo" header="Código del activo" sortable />
+                <Column field="referencia" header="Referencia" sortable />
                 <Column field="nombreActivo" header="Nombre del activo" sortable />
                 <Column field="ubicacionOrigen" header="Ubicación de origen" sortable />
                 <Column field="ubicacionDestino" header="Ubicación de destino" sortable />
@@ -165,19 +229,68 @@ const PendientesTraslados: React.FC = () => {
                 <Column header="Acciones" body={accionesBody} />
             </DataTable>
 
-            <Dialog header="Detalle del traslado" visible={detailVisible} style={{ width: '560px' }} modal onHide={() => setDetailVisible(false)}>
+            {/* Diálogo de Detalle */}
+            <Dialog 
+                header="Detalle del traslado" 
+                visible={detailVisible} 
+                style={{ width: '560px' }} 
+                modal 
+                onHide={() => setDetailVisible(false)}
+            >
                 {selected ? (
                     <div>
+                        <p><strong>Referencia:</strong> {selected.referencia}</p>
                         <p><strong>Código:</strong> {selected.codigoActivo}</p>
                         <p><strong>Nombre:</strong> {selected.nombreActivo}</p>
+                        <p><strong>Categoría:</strong> {selected.categoria}</p>
                         <p><strong>Origen:</strong> {selected.ubicacionOrigen}</p>
                         <p><strong>Destino:</strong> {selected.ubicacionDestino}</p>
                         <p><strong>Responsable anterior:</strong> {selected.responsableAnterior}</p>
                         <p><strong>Nuevo responsable:</strong> {selected.nuevoResponsable}</p>
                         <p><strong>Fecha:</strong> {formatDate(selected.fechaTraslado)}</p>
                         <p><strong>Motivo:</strong> {selected.motivo}</p>
+                        <p><strong>Observaciones:</strong> {selected.observaciones || 'Sin observaciones'}</p>
                     </div>
                 ) : null}
+            </Dialog>
+
+            {/* Diálogo de Confirmación de Ejecución */}
+            <Dialog 
+                header="Confirmar Ejecución" 
+                visible={execDialogVisible} 
+                style={{ width: '450px' }} 
+                modal 
+                onHide={() => setExecDialogVisible(false)}
+                footer={
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <Button 
+                            label="Cancelar" 
+                            icon="pi pi-times" 
+                            severity="secondary" 
+                            onClick={() => setExecDialogVisible(false)} 
+                        />
+                        <Button 
+                            label="Confirmar ejecución" 
+                            icon="pi pi-check" 
+                            severity="success" 
+                            onClick={handleConfirmExec} 
+                        />
+                    </div>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                    <label htmlFor="ejecutadoPor" style={{ fontWeight: '600' }}>
+                        Ejecutado por <span style={{ color: 'red' }}>*</span>
+                    </label>
+                    <InputText 
+                        id="ejecutadoPor" 
+                        value={ejecutadoPor} 
+                        onChange={e => setEjecutadoPor(e.target.value)} 
+                        placeholder="Ingrese el nombre del responsable"
+                        className="w-full"
+                        autoFocus
+                    />
+                </div>
             </Dialog>
         </div>
     );

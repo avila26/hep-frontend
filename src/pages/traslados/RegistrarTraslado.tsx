@@ -8,6 +8,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import { useActivos } from '../../context/ActivosContext';
+import { useTrasladosContext } from '../../context/TrasladosContext';
 
 interface Traslado {
     activo: string;
@@ -81,6 +82,7 @@ const fieldPrompts: { key: keyof Traslado; label: string }[] = [
 
 const RegistrarTraslado: React.FC = () => {
     const { activos } = useActivos();
+    const { agregarTraslado } = useTrasladosContext();
     const activosList = activos || [];
     const [data, setData] = useState<Traslado>(initial);
     const [showSummary, setShowSummary] = useState(false);
@@ -140,20 +142,25 @@ const RegistrarTraslado: React.FC = () => {
 
     const handleConfirm = () => {
         try {
-            const existing = JSON.parse(localStorage.getItem('traslados') || '[]');
-            const referenceId = `TR-${new Date().getFullYear()}-${String(existing.length + 1).padStart(4, '0')}`;
-            const record = { 
-                ...data, 
-                fechaRegistro: new Date().toISOString(), 
-                referencia: referenceId 
-            };
-            existing.push(record);
-            localStorage.setItem('traslados', JSON.stringify(existing));
+            agregarTraslado({
+                codigoActivo: data.activo,
+                nombreActivo: activoSeleccionado?.nombre ?? data.activo,
+                categoria: (activoSeleccionado as any)?.categoria ?? (activoSeleccionado as any)?.categoriaActivo ?? 'Sin categoría',
+                ubicacionOrigen: data.ubicacionOrigen,
+                ubicacionDestino: data.ubicacionDestino,
+                responsableAnterior: data.responsableAnterior,
+                nuevoResponsable: data.nuevoResponsable,
+                fechaTraslado: data.fechaTraslado
+                    ? `${data.fechaTraslado.getFullYear()}-${String(data.fechaTraslado.getMonth() + 1).padStart(2, '0')}-${String(data.fechaTraslado.getDate()).padStart(2, '0')}`
+                    : '',
+                motivo: data.motivo,
+                observaciones: data.observaciones
+            });
 
             toast.current?.show({ 
                 severity: 'success', 
                 summary: 'Traslado registrado', 
-                detail: `El traslado ha sido registrado como PENDIENTE (Ref: ${referenceId}). Puedes ejecutarlo en la pestaña Pendientes.`,
+                detail: 'Traslado registrado como PENDIENTE. Puedes verlo en la pestaña Pendientes.',
                 life: 4000
             });
             setData(initial);

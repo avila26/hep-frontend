@@ -4,6 +4,7 @@ import React from 'react';
     import routes from './routes';
     import { LayoutProvider } from './layout/context/layoutcontext';
     import { ActivosProvider } from './context/ActivosContext';
+    import { TrasladosProvider } from './context/TrasladosContext';
     
     // Global Styles
     import './assets/tailwind.css';
@@ -17,9 +18,11 @@ import 'primeflex/primeflex.css';
     ReactDOM.createRoot(document.getElementById('root')!).render(
         <React.StrictMode>
             <ActivosProvider>
-                <LayoutProvider>
-                    <RouterProvider router={router} />
-                </LayoutProvider>
+                <TrasladosProvider>
+                    <LayoutProvider>
+                        <RouterProvider router={router} />
+                    </LayoutProvider>
+                </TrasladosProvider>
             </ActivosProvider>
         </React.StrictMode>
     );

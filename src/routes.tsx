@@ -8,6 +8,8 @@ import NotFound from './pages/notfound/NotFound';
 import PlaceholderPage from './pages/PlaceholderPage';
 import RegistrarTraslado from './pages/traslados/RegistrarTraslado';
 import PendientesTraslados from './pages/traslados/Pendientes';
+import EjecutadosTraslados from './pages/traslados/Ejecutados';
+import HistorialTraslados from './pages/traslados/Historial';
 import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
 import CargaMasiva from './pages/activos/CargaMasiva';
@@ -62,8 +64,8 @@ export const routes: RouteObject[] = [
                     { index: true, element: <PlaceholderPage title="Traslados" /> },
                     { path: 'registrar', element: <RegistrarTraslado /> },
                     { path: 'pendientes', element: <PendientesTraslados /> },
-                    { path: 'ejecutados', element: <PlaceholderPage title="Traslados Ejecutados" /> },
-                    { path: 'historial', element: <PlaceholderPage title="Historial de Traslados" /> }
+                    { path: 'ejecutados', element: <EjecutadosTraslados /> },
+                    { path: 'historial', element: <HistorialTraslados /> }
                 ]
             },
             // Mantenimientos
