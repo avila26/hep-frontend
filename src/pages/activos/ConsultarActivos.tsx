@@ -5,8 +5,10 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { Card } from 'primereact/card';
+import { Dropdown } from 'primereact/dropdown';
 import { useActivos, Activo } from '../../context/ActivosContext';
 import { useNavigate } from 'react-router-dom';
+import { BarcodeDownload } from '../../components/BarcodeDownload';
 
 const ETIQUETAS_ESTADO: Record<string, string> = {
     BUE: 'Bueno',
@@ -48,23 +50,123 @@ export const ConsultarActivos: React.FC = () => {
 
     const [searchValue, setSearchValue] = useState('');
     const [selectedActivo, setSelectedActivo] = useState<Activo | null>(null);
+    const [barcodeActivo, setBarcodeActivo] = useState<Activo | null>(null);
 
-    // Filtrar activos por búsqueda
-    const activosFiltrados = activos.filter(activo =>
-        activo.nombre.toLowerCase().includes(searchValue.toLowerCase()) ||
-        activo.numeroSerie.toLowerCase().includes(searchValue.toLowerCase()) ||
-        activo.codigoInstitucional.toLowerCase().includes(searchValue.toLowerCase())
-    );
+    // Estados para los filtros avanzados (RF-RA-19 / HU-04)
+    const [filterActa, setFilterActa] = useState('');
+    const [filterResponsable, setFilterResponsable] = useState('');
+    const [filterContrato, setFilterContrato] = useState('');
+    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterEstado, setFilterEstado] = useState<string | null>(null);
+
+    // Obtener categorías únicas presentes en la base de datos
+    const categoriasUnicas = React.useMemo(() => {
+        const cats = activos.map(activo => activo.categoriaActivo).filter(Boolean);
+        return Array.from(new Set(cats)).sort();
+    }, [activos]);
+
+    const categoriaOptions = React.useMemo(() => {
+        return categoriasUnicas.map(cat => ({ label: cat, value: cat }));
+    }, [categoriasUnicas]);
+
+    // Opciones estáticas del catálogo de estados
+    const estadoOptions = [
+        { label: 'Bueno', value: 'BUE' },
+        { label: 'Regular', value: 'REG' },
+        { label: 'En bodega', value: 'BOD' },
+        { label: 'Malo', value: 'MAL' },
+        { label: 'En mantenimiento', value: 'MAN' },
+        { label: 'Obsoleto', value: 'OBS' },
+        { label: 'Egresado', value: 'EGR' },
+        { label: 'Dado de baja', value: 'BAJ' }
+    ];
+
+    const handleLimpiarFiltros = () => {
+        setSearchValue('');
+        setFilterActa('');
+        setFilterResponsable('');
+        setFilterContrato('');
+        setFilterCategoria(null);
+        setFilterEstado(null);
+    };
+
+    // Filtrar activos por todos los criterios activos (AND)
+    const activosFiltrados = activos.filter(activo => {
+        // Bien (Nombre, Serie o Código Institucional)
+        if (searchValue.trim()) {
+            const search = searchValue.toLowerCase();
+            const matchesNombre = activo.nombre?.toLowerCase().includes(search);
+            const matchesCodigo = activo.codigoInstitucional?.toLowerCase().includes(search);
+            const matchesSerie = activo.numeroSerie?.toLowerCase().includes(search);
+            if (!matchesNombre && !matchesCodigo && !matchesSerie) {
+                return false;
+            }
+        }
+
+        // Número de acta
+        if (filterActa.trim()) {
+            const searchActa = filterActa.toLowerCase();
+            if (!activo.numeroActa?.toLowerCase().includes(searchActa)) {
+                return false;
+            }
+        }
+
+        // Responsable de recepción (responsableEntrega)
+        if (filterResponsable.trim()) {
+            const searchResponsable = filterResponsable.toLowerCase();
+            if (!activo.responsableEntrega?.toLowerCase().includes(searchResponsable)) {
+                return false;
+            }
+        }
+
+        // Número de contrato
+        if (filterContrato.trim()) {
+            const searchContrato = filterContrato.toLowerCase();
+            if (!activo.numeroContrato?.toLowerCase().includes(searchContrato)) {
+                return false;
+            }
+        }
+
+        // Categoría (categoriaActivo)
+        if (filterCategoria) {
+            if (activo.categoriaActivo !== filterCategoria) {
+                return false;
+            }
+        }
+
+        // Estado (estadoActivo)
+        if (filterEstado) {
+            if (normalizarEstadoActivo(activo.estadoActivo) !== filterEstado) {
+                return false;
+            }
+        }
+
+        return true;
+    });
 
     // Columna con accion
     const actionBodyTemplate = (rowData: Activo) => (
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center">
             <Button
                 icon="pi pi-eye"
                 rounded
                 severity="info"
                 onClick={() => setSelectedActivo(rowData)}
                 title="Ver detalles"
+            />
+            <Button
+                icon="pi pi-barcode"
+                rounded
+                severity="secondary"
+                onClick={() => setBarcodeActivo(rowData)}
+                title="Ver código de barras"
+            />
+            <Button
+                icon="pi pi-history"
+                rounded
+                severity="warning"
+                onClick={() => navigate(`/activos/hoja-vida/${rowData.idActivo}`)}
+                title="Ver hoja de vida"
             />
         </div>
     );
@@ -119,23 +221,104 @@ export const ConsultarActivos: React.FC = () => {
                 <p className="text-slate-600 dark:text-slate-400">Total de activos registrados: <strong>{activos.length}</strong></p>
             </div>
 
-            <Card className="shadow-lg">
-                {/* Barra de búsqueda y acciones */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
-                    <div className="flex-1 w-full">
+            {/* Panel de Filtros */}
+            <Card className="shadow-lg mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                    <h5 className="m-0 text-lg font-semibold text-slate-700 dark:text-slate-300">
+                        <i className="pi pi-filter mr-2 text-blue-500"></i> Filtros de Búsqueda
+                    </h5>
+                    <Button
+                        label="Limpiar filtros"
+                        icon="pi pi-filter-slash"
+                        severity="secondary"
+                        outlined
+                        onClick={handleLimpiarFiltros}
+                        size="small"
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {/* Búsqueda por Bien */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Bien (Nombre o Código)</label>
                         <InputText
                             type="search"
-                            placeholder="Buscar por nombre, serie o código..."
+                            placeholder="Buscar bien..."
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
-                            className="w-full"
+                            className="w-full text-sm"
                         />
                     </div>
+
+                    {/* Número de Acta */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Número de Acta</label>
+                        <InputText
+                            placeholder="Ej: ACTA-2024-001"
+                            value={filterActa}
+                            onChange={(e) => setFilterActa(e.target.value)}
+                            className="w-full text-sm"
+                        />
+                    </div>
+
+                    {/* Responsable de Recepción */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Responsable de Recepción</label>
+                        <InputText
+                            placeholder="Buscar responsable..."
+                            value={filterResponsable}
+                            onChange={(e) => setFilterResponsable(e.target.value)}
+                            className="w-full text-sm"
+                        />
+                    </div>
+
+                    {/* Número de Contrato */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Número de Contrato</label>
+                        <InputText
+                            placeholder="Ej: CONTRATO-2024-001"
+                            value={filterContrato}
+                            onChange={(e) => setFilterContrato(e.target.value)}
+                            className="w-full text-sm"
+                        />
+                    </div>
+
+                    {/* Categoría */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Categoría</label>
+                        <Dropdown
+                            value={filterCategoria}
+                            options={categoriaOptions}
+                            onChange={(e) => setFilterCategoria(e.value)}
+                            placeholder="Todas las categorías"
+                            showClear
+                            className="w-full text-sm"
+                        />
+                    </div>
+
+                    {/* Estado */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Estado</label>
+                        <Dropdown
+                            value={filterEstado}
+                            options={estadoOptions}
+                            onChange={(e) => setFilterEstado(e.value)}
+                            placeholder="Todos los estados"
+                            showClear
+                            className="w-full text-sm"
+                        />
+                    </div>
+                </div>
+            </Card>
+
+            <Card className="shadow-lg">
+                {/* Cabecera del listado */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <h5 className="m-0 text-xl font-semibold text-slate-800 dark:text-slate-100">Listado de Activos</h5>
                     <Button
                         label="Registrar Nuevo"
                         icon="pi pi-plus"
                         onClick={() => navigate('/activos/registrar')}
-                        className="w-full md:w-auto"
+                        className="w-full sm:w-auto"
                     />
                 </div>
 
@@ -368,7 +551,7 @@ export const ConsultarActivos: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Tiempo Vida Útil (años)</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2    ">Tiempo Vida Útil (años)</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tiempoVidaUtil ?? '-'}</div>
                                 </div>
                                 <div>
@@ -384,6 +567,38 @@ export const ConsultarActivos: React.FC = () => {
                             </div>
                         </section>
 
+                        {/* SECCIÓN 6: Código de Barras */}
+                        <section className="mb-5">
+                            <h3 className="text-sm uppercase tracking-normal text-slate-700 font-bold mb-2 border-b border-slate-200 pb-2">Código de Barras</h3>
+                            <div className="mt-4 max-w-sm mx-auto">
+                                <BarcodeDownload activo={selectedActivo} />
+                            </div>
+                        </section>
+
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Dialog específico para reimprimir / ver código de barras */}
+            <Dialog
+                header="Etiqueta de Código de Barras"
+                visible={barcodeActivo !== null}
+                onHide={() => setBarcodeActivo(null)}
+                style={{ width: '450px' }}
+                modal
+                closable
+            >
+                {barcodeActivo && (
+                    <div className="pt-2">
+                        <BarcodeDownload activo={barcodeActivo} />
+                        <div className="flex justify-end mt-4">
+                            <Button
+                                label="Cerrar"
+                                icon="pi pi-times"
+                                severity="secondary"
+                                onClick={() => setBarcodeActivo(null)}
+                            />
+                        </div>
                     </div>
                 )}
             </Dialog>

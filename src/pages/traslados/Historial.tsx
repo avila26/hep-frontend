@@ -19,7 +19,7 @@ interface Traslado {
     estado: 'Pendiente' | 'Aprobado' | 'Ejecutado';
 }
 
-const MOCK_HISTORIAL: Traslado[] = [
+export const MOCK_HISTORIAL: Traslado[] = [
     {
         id: '1',
         codigoActivo: 'CI-2026-0001',

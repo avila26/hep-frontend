@@ -17,7 +17,7 @@ export interface ResultadoImportacion {
     activo?: Omit<Activo, 'idActivo'>;
 }
 
-const FILA_EJEMPLO: Record<string, string | number> = {
+export const FILA_EJEMPLO: Record<string, string | number> = {
     Nombre: 'Monitor de signos vitales',
     Marca: 'Philips',
     Descripción: 'Monitor multiparamétrico para UCI',

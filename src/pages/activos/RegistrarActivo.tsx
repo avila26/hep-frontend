@@ -8,11 +8,13 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
 import CreatableSelect from 'react-select/creatable';
 import type { SingleValue } from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import { useActivos } from '../../context/ActivosContext';
 import { UbicacionCascada } from '../../components/UbicacionCascada';
+import { BarcodeDownload } from '../../components/BarcodeDownload';
 
 interface Activo {
     idActivo?: number;
@@ -382,6 +384,9 @@ export const RegistrarActivo: React.FC = () => {
     const toast = useRef<Toast>(null);
     const { activos, agregarActivo } = useActivos();
 
+    const [creadoActivo, setCreadoActivo] = useState<Activo | null>(null);
+    const [showBarcodeDialog, setShowBarcodeDialog] = useState(false);
+
     const [formData, setFormData] = useState<Activo>({
         codigoInstitucional: '',
         nombre: '',
@@ -598,19 +603,17 @@ export const RegistrarActivo: React.FC = () => {
         try {
             // Guardar en el contexto
             const { idActivo, ...datosActivo } = formData;
-            agregarActivo(datosActivo);
+            const nuevoActivo = agregarActivo(datosActivo);
 
             toast.current?.show({
                 severity: 'success',
                 summary: 'Éxito',
                 detail: 'Activo registrado correctamente',
-                life: 3000
+                life: 2000
             });
 
-            // Redirigir después de 2 segundos
-            setTimeout(() => {
-                navigate('/activos/consultar');
-            }, 2000);
+            setCreadoActivo(nuevoActivo as unknown as Activo);
+            setShowBarcodeDialog(true);
         } catch (error) {
             toast.current?.show({
                 severity: 'error',
@@ -1064,6 +1067,36 @@ export const RegistrarActivo: React.FC = () => {
                     />
                 </div>
             </Card>
+
+            {/* Dialog de Código de Barras */}
+            <Dialog
+                header="Código de Barras del Activo Registrado"
+                visible={showBarcodeDialog}
+                onHide={() => {
+                    setShowBarcodeDialog(false);
+                    navigate('/activos/consultar');
+                }}
+                style={{ width: '450px' }}
+                modal
+                closable
+            >
+                {creadoActivo && (
+                    <div className="pt-2">
+                        <BarcodeDownload activo={creadoActivo as any} />
+                        <div className="flex justify-end mt-4">
+                            <Button
+                                label="Cerrar y Ver Activos"
+                                icon="pi pi-check"
+                                severity="success"
+                                onClick={() => {
+                                    setShowBarcodeDialog(false);
+                                    navigate('/activos/consultar');
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+            </Dialog>
         </div>
     );
 };

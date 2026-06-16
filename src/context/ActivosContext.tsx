@@ -55,7 +55,8 @@ export interface CargaMasivaLog {
 interface ActivosContextType {
     activos: Activo[];
     cargasMasivas: CargaMasivaLog[];
-    agregarActivo: (activo: Omit<Activo, 'idActivo'>) => void;
+    agregarActivo: (activo: Omit<Activo, 'idActivo'>) => Activo;
+    agregarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[];
     eliminarActivo: (idActivo: number) => void;
     actualizarActivo: (activo: Activo) => void;
     registrarCarga: (log: Omit<CargaMasivaLog, 'idCarga'>) => void;
@@ -119,22 +120,45 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem('cargas_masivas_hep', JSON.stringify(cargasMasivas));
     }, [cargasMasivas]);
 
-    const agregarActivo = (activo: Omit<Activo, 'idActivo'>) => {
-        setActivos(prev => {
+    const agregarActivo = (activo: Omit<Activo, 'idActivo'>): Activo => {
+        const codigoInstitucional =
+            !activo.codigoInstitucional ||
+            activos.some(a => a.codigoInstitucional === activo.codigoInstitucional)
+                ? generateCodigoInstitucional(activos)
+                : activo.codigoInstitucional;
+
+        const nuevoActivo: Activo = {
+            ...activo,
+            codigoInstitucional,
+            idActivo: activos.length > 0 ? Math.max(...activos.map(a => a.idActivo)) + 1 : 1
+        };
+
+        setActivos(prev => [...prev, nuevoActivo]);
+        return nuevoActivo;
+    };
+
+    const agregarActivos = (nuevosActivosSinId: Omit<Activo, 'idActivo'>[]): Activo[] => {
+        const creados: Activo[] = [];
+        let currentList = [...activos];
+
+        for (const activo of nuevosActivosSinId) {
             const codigoInstitucional =
                 !activo.codigoInstitucional ||
-                prev.some(a => a.codigoInstitucional === activo.codigoInstitucional)
-                    ? generateCodigoInstitucional(prev)
+                currentList.some(a => a.codigoInstitucional === activo.codigoInstitucional)
+                    ? generateCodigoInstitucional(currentList)
                     : activo.codigoInstitucional;
 
             const nuevoActivo: Activo = {
                 ...activo,
                 codigoInstitucional,
-                idActivo: prev.length > 0 ? Math.max(...prev.map(a => a.idActivo)) + 1 : 1
+                idActivo: currentList.length > 0 ? Math.max(...currentList.map(a => a.idActivo)) + 1 : 1
             };
+            currentList.push(nuevoActivo);
+            creados.push(nuevoActivo);
+        }
 
-            return [...prev, nuevoActivo];
-        });
+        setActivos(currentList);
+        return creados;
     };
 
     const eliminarActivo = (idActivo: number) => {
@@ -157,7 +181,15 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     return (
         <ActivosContext.Provider
-            value={{ activos, cargasMasivas, agregarActivo, eliminarActivo, actualizarActivo, registrarCarga }}
+            value={{
+                activos,
+                cargasMasivas,
+                agregarActivo,
+                agregarActivos,
+                eliminarActivo,
+                actualizarActivo,
+                registrarCarga
+            }}
         >
             {children}
         </ActivosContext.Provider>

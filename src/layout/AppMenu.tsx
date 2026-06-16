@@ -30,7 +30,6 @@ export const AppMenu: React.FC = () => {
                 { label: 'Registrar Activo', icon: 'pi pi-fw pi-plus-circle', routerLink: ['/activos/registrar'] },
                 { label: 'Consultar Activos', icon: 'pi pi-fw pi-search', routerLink: ['/activos/consultar'] },
                 { label: 'Carga Masiva', icon: 'pi pi-fw pi-file-excel', routerLink: ['/activos/carga-masiva'] },
-                { label: 'Código de Barras', icon: 'pi pi-fw pi-qrcode', routerLink: ['/activos/codigo-barras'] },
                 { label: 'Hoja de Vida', icon: 'pi pi-fw pi-history', routerLink: ['/activos/hoja-vida'] }
             ]
         },

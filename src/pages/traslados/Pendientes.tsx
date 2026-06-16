@@ -7,7 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 
-interface Traslado {
+export interface Traslado {
     id: string;
     codigoActivo: string;
     nombreActivo: string;
@@ -20,7 +20,7 @@ interface Traslado {
     estado: 'Pendiente' | 'Aprobado' | 'Ejecutado';
 }
 
-const MOCK_TRASLADOS: Traslado[] = [
+export const MOCK_TRASLADOS: Traslado[] = [
     {
         id: '1',
         codigoActivo: 'CI-2026-0001',

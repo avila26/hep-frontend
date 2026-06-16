@@ -7,6 +7,7 @@ import { Toast } from 'primereact/toast';
 import { Divider } from 'primereact/divider';
 import { FileUpload, FileUploadHandlerEvent } from 'primereact/fileupload';
 import { useActivos, Activo } from '../../context/ActivosContext';
+import { BarcodeDownload, downloadBarcodeAsPng } from '../../components/BarcodeDownload';
 import {
     calcularEstadoCarga,
     descargarReporteErrores,
@@ -25,7 +26,7 @@ const ETIQUETAS_ESTADO_CARGA: Record<string, string> = {
 export const CargaMasiva: React.FC = () => {
     const toast = useRef<Toast>(null);
     const fileUploadRef = useRef<FileUpload>(null);
-    const { activos, agregarActivo, registrarCarga, cargasMasivas } = useActivos();
+    const { activos, agregarActivos, registrarCarga, cargasMasivas } = useActivos();
 
     const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
     const [nombreArchivo, setNombreArchivo] = useState('');
@@ -34,6 +35,8 @@ export const CargaMasiva: React.FC = () => {
     const [importando, setImportando] = useState(false);
     const [resultados, setResultados] = useState<ResultadoImportacion[]>([]);
     const [activosValidos, setActivosValidos] = useState<Omit<Activo, 'idActivo'>[]>([]);
+    const [activosImportados, setActivosImportados] = useState<Activo[]>([]);
+    const [descargandoTodos, setDescargandoTodos] = useState(false);
 
     const totalFilas = resultados.length;
     const filasValidas = resultados.filter(r => r.exitoso).length;
@@ -68,6 +71,7 @@ export const CargaMasiva: React.FC = () => {
         setValidado(false);
         setResultados([]);
         setActivosValidos([]);
+        fileUploadRef.current?.clear();
     };
 
     const handleValidarArchivo = async () => {
@@ -123,9 +127,8 @@ export const CargaMasiva: React.FC = () => {
 
         setImportando(true);
         try {
-            activosValidos.forEach(activo => {
-                agregarActivo({ ...activo, codigoInstitucional: '' });
-            });
+            // Guardar en el contexto usando la función en lote
+            const creados = agregarActivos(activosValidos.map(activo => ({ ...activo, codigoInstitucional: '' })));
 
             const total = resultados.length;
             const exitosas = activosValidos.length;
@@ -148,6 +151,7 @@ export const CargaMasiva: React.FC = () => {
                 life: 4000
             });
 
+            setActivosImportados(creados);
             limpiarEstadoCarga();
         } catch (error) {
             console.error(error);
@@ -159,6 +163,34 @@ export const CargaMasiva: React.FC = () => {
             });
         } finally {
             setImportando(false);
+        }
+    };
+
+    const handleDescargarTodos = async () => {
+        if (activosImportados.length === 0) return;
+        setDescargandoTodos(true);
+        try {
+            for (const activo of activosImportados) {
+                await downloadBarcodeAsPng(activo);
+                // Retraso de 200ms para evitar problemas con las descargas en el navegador
+                await new Promise((r) => setTimeout(r, 200));
+            }
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Descarga completada',
+                detail: 'Se descargaron todos los códigos de barras',
+                life: 3000
+            });
+        } catch (error) {
+            console.error('Error al descargar todos los códigos de barras:', error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Ocurrió un error al procesar las descargas',
+                life: 3000
+            });
+        } finally {
+            setDescargandoTodos(false);
         }
     };
 
@@ -305,6 +337,66 @@ export const CargaMasiva: React.FC = () => {
                                     className="w-full md:w-auto"
                                 />
                             </div>
+                        </div>
+                    </>
+                )}
+
+                {activosImportados.length > 0 && (
+                    <>
+                        <Divider />
+
+                        <div className="mb-8 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-lg border border-emerald-200 dark:border-emerald-900/50">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-emerald-800 dark:text-emerald-300">
+                                        Activos Importados Exitosamente ({activosImportados.length})
+                                    </h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        Se han registrado correctamente los siguientes activos. Puede descargar sus códigos de barras de forma individual o masiva.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <Button
+                                        label="Descargar todos los codigos de barras"
+                                        icon="pi pi-download"
+                                        severity="success"
+                                        loading={descargandoTodos}
+                                        onClick={handleDescargarTodos}
+                                        className="w-full md:w-auto shadow-md"
+                                    />
+                                    <Button
+                                        label="Limpiar / Nueva Carga"
+                                        icon="pi pi-trash"
+                                        severity="secondary"
+                                        onClick={() => setActivosImportados([])}
+                                        className="w-full md:w-auto"
+                                    />
+                                </div>
+                            </div>
+
+                            <DataTable
+                                value={activosImportados}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25]}
+                                emptyMessage="No hay activos importados"
+                                className="shadow-sm rounded-lg"
+                                stripedRows
+                            >
+                                <Column field="nombre" header="Nombre" sortable />
+                                <Column field="numeroSerie" header="N° Serie" sortable />
+                                <Column field="codigoInstitucional" header="Código Institucional" sortable />
+                                <Column field="marca" header="Marca" />
+                                <Column
+                                    header="Descargar Código"
+                                    body={(rowData: Activo) => (
+                                        <div className="flex justify-center">
+                                            <BarcodeDownload activo={rowData} compact={true} />
+                                        </div>
+                                    )}
+                                    style={{ width: '150px', textAlign: 'center' }}
+                                />
+                            </DataTable>
                         </div>
                     </>
                 )}
