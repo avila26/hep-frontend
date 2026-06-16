@@ -195,7 +195,7 @@ export const CargaMasiva: React.FC = () => {
 
             <h1 className="text-2xl font-medium text-slate-800 dark:text-slate-100 mb-2">Carga Masiva</h1>
             <p className="text-slate-600 dark:text-slate-400 mb-4">
-                Importe varios activos desde un archivo Excel. Descargue la plantilla, complete los datos y valide
+                Importe varios activos desde un archivo Excel. Valide los datos
                 antes de confirmar la importación.
             </p>
 
