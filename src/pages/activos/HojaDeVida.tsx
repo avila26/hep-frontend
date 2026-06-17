@@ -4,8 +4,7 @@ import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Timeline } from 'primereact/timeline';
 import { useActivos } from '../../context/ActivosContext';
-import { MOCK_TRASLADOS } from '../traslados/Pendientes';
-import { MOCK_HISTORIAL } from '../traslados/Historial';
+import { useTrasladosContext } from '../../context/TrasladosContext';
 
 // Mocks locales para Mantenimientos (coherente con RF-MA-11, RF-MA-12, RF-MA-13)
 interface Mantenimiento {
@@ -147,6 +146,7 @@ export const HojaDeVida: React.FC = () => {
     const { idActivo } = useParams<{ idActivo?: string }>();
     const navigate = useNavigate();
     const { activos } = useActivos();
+    const { traslados } = useTrasladosContext();
     const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
 
     const activo = useMemo(() => {
@@ -186,33 +186,25 @@ export const HojaDeVida: React.FC = () => {
             )
         });
 
-        // 2. Traslados (Mocks + LocalStorage)
-        const trasladosPendientes = MOCK_TRASLADOS.filter(t => t.codigoActivo === activo.codigoInstitucional);
-        const trasladosHistorial = MOCK_HISTORIAL.filter(t => t.codigoActivo === activo.codigoInstitucional);
-        const localTrasladosRaw = localStorage.getItem('traslados');
-        const localTraslados = localTrasladosRaw ? JSON.parse(localTrasladosRaw) : [];
-        const trasladosLocales = localTraslados.filter((t: any) => t.activo === activo.codigoInstitucional);
+        // 2. Traslados (desde TrasladosContext)
+        const trasladosActivo = traslados.filter(t => t.codigoActivo === activo.codigoInstitucional);
 
-        const allTraslados = [
-            ...trasladosPendientes.map((t, i) => ({ ...t, key: `pend-${i}` })),
-            ...trasladosHistorial.map((t, i) => ({ ...t, key: `hist-${i}` })),
-            ...trasladosLocales.map((t: any, i: number) => ({
-                id: t.referencia || `local-${i}`,
-                codigoActivo: t.activo,
-                nombreActivo: activo.nombre,
-                ubicacionOrigen: t.ubicacionOrigen,
-                ubicacionDestino: t.ubicacionDestino,
-                responsableAnterior: t.responsableAnterior,
-                nuevoResponsable: t.nuevoResponsable,
-                fechaTraslado: t.fechaTraslado ? new Date(t.fechaTraslado) : new Date(),
-                motivo: t.motivo,
-                estado: t.estado,
-                key: `local-${i}`
-            }))
-        ];
+        const allTraslados = trasladosActivo.map((t, i) => ({
+            id: t.id,
+            codigoActivo: t.codigoActivo,
+            nombreActivo: t.nombreActivo,
+            ubicacionOrigen: t.ubicacionOrigen,
+            ubicacionDestino: t.ubicacionDestino,
+            responsableAnterior: t.responsableAnterior,
+            nuevoResponsable: t.nuevoResponsable,
+            fechaTraslado: t.fechaTraslado ? new Date(t.fechaTraslado + 'T00:00:00') : new Date(),
+            motivo: t.motivo,
+            estado: t.estado,
+            key: `traslado-${i}`
+        }));
 
         allTraslados.forEach((t) => {
-            const dateVal = t.fechaTraslado ? new Date(t.fechaTraslado) : new Date();
+            const dateVal = t.fechaTraslado;
             events.push({
                 id: `traslado-${t.id}-${t.key}`,
                 fecha: dateVal,

@@ -8,76 +8,10 @@ import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext';
 
-<<<<<<< HEAD
-export interface Traslado {
-    id: string;
-    codigoActivo: string;
-    nombreActivo: string;
-    ubicacionOrigen: string;
-    ubicacionDestino: string;
-    responsableAnterior: string;
-    nuevoResponsable: string;
-    fechaTraslado: Date;
-    motivo: string;
-    estado: 'Pendiente' | 'Aprobado' | 'Ejecutado';
-}
 
-export const MOCK_TRASLADOS: Traslado[] = [
-    {
-        id: '1',
-        codigoActivo: 'CI-2026-0001',
-        nombreActivo: 'Ventilador mecánico',
-        ubicacionOrigen: 'UCI',
-        ubicacionDestino: 'Quirófano A',
-        responsableAnterior: 'Ing. Carlos Ortega',
-        nuevoResponsable: 'Dra. Elena Larrea',
-        fechaTraslado: new Date(2026, 5, 20),
-        motivo: 'Reasignación por aumento de demanda',
-        estado: 'Pendiente'
-    },
-    {
-        id: '2',
-        codigoActivo: 'CI-2026-0002',
-        nombreActivo: 'Monitor de signos vitales',
-        ubicacionOrigen: 'Quirófano B',
-        ubicacionDestino: 'UCI',
-        responsableAnterior: 'Lic. María Gómez',
-        nuevoResponsable: 'Dr. Juan Pérez',
-        fechaTraslado: new Date(2026, 5, 22),
-        motivo: 'Apoyo temporal para pacientes críticos',
-        estado: 'Pendiente'
-    },
-    {
-        id: '3',
-        codigoActivo: 'CI-2026-0003',
-        nombreActivo: 'Bomba de infusión',
-        ubicacionOrigen: 'Hospitalización - Piso 1',
-        ubicacionDestino: 'Consulta Externa',
-        responsableAnterior: 'Mgs. Belén Villao',
-        nuevoResponsable: 'LIC. Lisbeth Mero',
-        fechaTraslado: new Date(2026, 6, 2),
-        motivo: 'Reposicionamiento para campaña de vacunación',
-        estado: 'Pendiente'
-    },
-    {
-        id: '4',
-        codigoActivo: 'CI-2025-0042',
-        nombreActivo: 'Laptop administrativa',
-        ubicacionOrigen: 'Área Administrativa',
-        ubicacionDestino: 'TICs',
-        responsableAnterior: 'Ing. Antonio Alarcón',
-        nuevoResponsable: 'Ing. Carlos Ortega',
-        fechaTraslado: new Date(2026, 4, 15),
-        motivo: 'Soporte técnico y actualización de software',
-        estado: 'Pendiente'
-    }
-];
-
-=======
 /* ------------------------------------------------------------------ */
 /*  Utilidad de Formato de Fecha                                     */
 /* ------------------------------------------------------------------ */
->>>>>>> cd32ff7 (cambios en traslado)
 const formatDate = (d: Date | string | null | undefined): string => {
     if (!d) return '—';
     const date = d instanceof Date ? d : new Date(d);
@@ -152,11 +86,11 @@ const PendientesTraslados: React.FC = () => {
             </div>
             <span className="p-input-icon-left">
                 <i className="pi pi-search" />
-                <InputText 
-                    type="search" 
-                    value={globalFilter} 
-                    onChange={e => setGlobalFilter(e.target.value)} 
-                    placeholder="Buscar..." 
+                <InputText
+                    type="search"
+                    value={globalFilter}
+                    onChange={e => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
                 />
             </span>
         </div>
@@ -170,21 +104,21 @@ const PendientesTraslados: React.FC = () => {
 
     const accionesBody = (row: TrasladoHEP) => (
         <div style={{ display: 'flex', gap: 8 }}>
-            <Button 
-                icon="pi pi-eye" 
+            <Button
+                icon="pi pi-eye"
                 severity="info"
                 rounded
-                aria-label="Ver detalle" 
-                onClick={() => viewDetail(row)} 
-                tooltip="Ver detalle" 
+                aria-label="Ver detalle"
+                onClick={() => viewDetail(row)}
+                tooltip="Ver detalle"
             />
-            <Button 
-                icon="pi pi-play-circle" 
+            <Button
+                icon="pi pi-play-circle"
                 severity="success"
                 rounded
-                aria-label="Ejecutar traslado" 
-                onClick={() => openExecDialog(row)} 
-                tooltip="Ejecutar" 
+                aria-label="Ejecutar traslado"
+                onClick={() => openExecDialog(row)}
+                tooltip="Ejecutar"
             />
         </div>
     );
@@ -230,11 +164,11 @@ const PendientesTraslados: React.FC = () => {
             </DataTable>
 
             {/* Diálogo de Detalle */}
-            <Dialog 
-                header="Detalle del traslado" 
-                visible={detailVisible} 
-                style={{ width: '560px' }} 
-                modal 
+            <Dialog
+                header="Detalle del traslado"
+                visible={detailVisible}
+                style={{ width: '560px' }}
+                modal
                 onHide={() => setDetailVisible(false)}
             >
                 {selected ? (
@@ -255,25 +189,25 @@ const PendientesTraslados: React.FC = () => {
             </Dialog>
 
             {/* Diálogo de Confirmación de Ejecución */}
-            <Dialog 
-                header="Confirmar Ejecución" 
-                visible={execDialogVisible} 
-                style={{ width: '450px' }} 
-                modal 
+            <Dialog
+                header="Confirmar Ejecución"
+                visible={execDialogVisible}
+                style={{ width: '450px' }}
+                modal
                 onHide={() => setExecDialogVisible(false)}
                 footer={
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <Button 
-                            label="Cancelar" 
-                            icon="pi pi-times" 
-                            severity="secondary" 
-                            onClick={() => setExecDialogVisible(false)} 
+                        <Button
+                            label="Cancelar"
+                            icon="pi pi-times"
+                            severity="secondary"
+                            onClick={() => setExecDialogVisible(false)}
                         />
-                        <Button 
-                            label="Confirmar ejecución" 
-                            icon="pi pi-check" 
-                            severity="success" 
-                            onClick={handleConfirmExec} 
+                        <Button
+                            label="Confirmar ejecución"
+                            icon="pi pi-check"
+                            severity="success"
+                            onClick={handleConfirmExec}
                         />
                     </div>
                 }
@@ -282,10 +216,10 @@ const PendientesTraslados: React.FC = () => {
                     <label htmlFor="ejecutadoPor" style={{ fontWeight: '600' }}>
                         Ejecutado por <span style={{ color: 'red' }}>*</span>
                     </label>
-                    <InputText 
-                        id="ejecutadoPor" 
-                        value={ejecutadoPor} 
-                        onChange={e => setEjecutadoPor(e.target.value)} 
+                    <InputText
+                        id="ejecutadoPor"
+                        value={ejecutadoPor}
+                        onChange={e => setEjecutadoPor(e.target.value)}
                         placeholder="Ingrese el nombre del responsable"
                         className="w-full"
                         autoFocus

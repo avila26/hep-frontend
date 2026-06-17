@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -7,90 +7,19 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Calendar } from 'primereact/calendar';
 import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
 import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext';
+import { useActivos } from '../../context/ActivosContext';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-<<<<<<< HEAD
-interface Traslado {
-    id: string;
-    codigoActivo: string;
-    nombreActivo: string;
-    ubicacionOrigen: string;
-    ubicacionDestino: string;
-    responsableAnterior: string;
-    nuevoResponsable: string;
-    fechaTraslado: Date | string;
-    motivo: string;
-    estado: 'Pendiente' | 'Aprobado' | 'Ejecutado';
-}
 
-export const MOCK_HISTORIAL: Traslado[] = [
-    {
-        id: '1',
-        codigoActivo: 'CI-2026-0001',
-        nombreActivo: 'Ventilador mecánico',
-        ubicacionOrigen: 'UCI',
-        ubicacionDestino: 'Quirófano A',
-        responsableAnterior: 'Ing. Carlos Ortega',
-        nuevoResponsable: 'Dra. Elena Larrea',
-        fechaTraslado: new Date(2026, 5, 20),
-        motivo: 'Reasignación por aumento de demanda',
-        estado: 'Pendiente'
-    },
-    {
-        id: '2',
-        codigoActivo: 'CI-2026-0002',
-        nombreActivo: 'Monitor de signos vitales',
-        ubicacionOrigen: 'Quirófano B',
-        ubicacionDestino: 'UCI',
-        responsableAnterior: 'Lic. María Gómez',
-        nuevoResponsable: 'Dr. Juan Pérez',
-        fechaTraslado: new Date(2026, 5, 22),
-        motivo: 'Apoyo temporal para pacientes críticos',
-        estado: 'Pendiente'
-    },
-    {
-        id: '5',
-        codigoActivo: 'CI-2025-0010',
-        nombreActivo: 'Desfibrilador',
-        ubicacionOrigen: 'Emergencias',
-        ubicacionDestino: 'Quirófano B',
-        responsableAnterior: 'Dr. Luis Molina',
-        nuevoResponsable: 'Dra. Ana Torres',
-        fechaTraslado: new Date(2025, 11, 10),
-        motivo: 'Equipamiento de nuevo quirófano',
-        estado: 'Ejecutado'
-    },
-    {
-        id: '6',
-        codigoActivo: 'CI-2025-0025',
-        nombreActivo: 'Electrocardiógrafo',
-        ubicacionOrigen: 'Consulta Externa',
-        ubicacionDestino: 'Cardiología',
-        responsableAnterior: 'Lic. Rosa Mendez',
-        nuevoResponsable: 'Dr. Héctor Salas',
-        fechaTraslado: new Date(2026, 0, 5),
-        motivo: 'Traslado a unidad especializada',
-        estado: 'Ejecutado'
-    },
-    {
-        id: '7',
-        codigoActivo: 'CI-2026-0008',
-        nombreActivo: 'Oxímetro de pulso',
-        ubicacionOrigen: 'UCI',
-        ubicacionDestino: 'Neonatología',
-        responsableAnterior: 'Ing. Mario Vera',
-        nuevoResponsable: 'Dr. Carlos Ruiz',
-        fechaTraslado: new Date(2026, 2, 18),
-        motivo: 'Cobertura en área de recién nacidos',
-        estado: 'Ejecutado'
-    }
-];
 
-=======
 /* ------------------------------------------------------------------ */
 /*  Utilidad de Formato de Fecha                                     */
 /* ------------------------------------------------------------------ */
->>>>>>> cd32ff7 (cambios en traslado)
+
 const formatDate = (d: Date | string | null | undefined): string => {
     if (!d) return '—';
     const date = d instanceof Date ? d : new Date(d);
@@ -106,6 +35,7 @@ const formatDate = (d: Date | string | null | undefined): string => {
 /* ------------------------------------------------------------------ */
 const HistorialTraslados: React.FC = () => {
     const { traslados } = useTrasladosContext();
+    const { activos } = useActivos();
     const location = useLocation();
 
     const [globalFilter, setGlobalFilter] = useState('');
@@ -123,17 +53,139 @@ const HistorialTraslados: React.FC = () => {
         }
     }, [location.state]);
 
-    // Filtrado local por rango de fechas
-    const trasladosFiltrados = traslados.filter(t => {
-        if (!t.fechaTraslado) return true;
-        // Convertir YYYY-MM-DD a objeto Date local
-        const [year, month, day] = t.fechaTraslado.split('-').map(Number);
-        const fecha = new Date(year, month - 1, day);
+    const [selectedRows, setSelectedRows] = useState<TrasladoHEP[]>([]);
+    const toast = useRef<Toast>(null);
 
-        const matchDesde = fechaDesde ? fecha >= fechaDesde : true;
-        const matchHasta = fechaHasta ? fecha <= fechaHasta : true;
-        return matchDesde && matchHasta;
-    });
+    // Filtrado local por rango de fechas y globalFilter
+    const trasladosVisibles = useMemo(() => {
+        return traslados.filter(t => {
+            // 1. Filtro por fechaDesde
+            let matchDesde = true;
+            if (fechaDesde && t.fechaTraslado) {
+                const [year, month, day] = t.fechaTraslado.split('-').map(Number);
+                const fecha = new Date(year, month - 1, day);
+                matchDesde = fecha >= fechaDesde;
+            }
+
+            // 2. Filtro por fechaHasta
+            let matchHasta = true;
+            if (fechaHasta && t.fechaTraslado) {
+                const [year, month, day] = t.fechaTraslado.split('-').map(Number);
+                const fecha = new Date(year, month - 1, day);
+                matchHasta = fecha <= fechaHasta;
+            }
+
+            // 3. Filtro por globalFilter (búsqueda de texto)
+            let matchGlobal = true;
+            if (globalFilter.trim()) {
+                const search = globalFilter.toLowerCase().trim();
+                const fieldsToSearch = [
+                    t.referencia,
+                    t.codigoActivo,
+                    t.nombreActivo,
+                    t.categoria,
+                    t.ubicacionOrigen,
+                    t.ubicacionDestino,
+                    t.responsableAnterior,
+                    t.nuevoResponsable,
+                    t.motivo,
+                    t.ejecutadoPor,
+                    t.observaciones,
+                    t.estado
+                ];
+                matchGlobal = fieldsToSearch.some(field => 
+                    field && field.toLowerCase().includes(search)
+                );
+            }
+
+            return matchDesde && matchHasta && matchGlobal;
+        });
+    }, [traslados, fechaDesde, fechaHasta, globalFilter]);
+
+    const obtenerDatosExportacion = (datos: TrasladoHEP[]) => {
+        return datos.map(t => ({
+            'Referencia': t.referencia || '—',
+            'Código Activo': t.codigoActivo || '—',
+            'Nombre Activo': t.nombreActivo || '—',
+            'Categoría': t.categoria || '—',
+            'Origen': t.ubicacionOrigen || '—',
+            'Destino': t.ubicacionDestino || '—',
+            'Resp. Anterior': t.responsableAnterior || '—',
+            'Nuevo Resp.': t.nuevoResponsable || '—',
+            'Fecha Traslado': formatDate(t.fechaTraslado),
+            'Fecha Ejecución': formatDate(t.fechaEjecucion),
+            'Motivo': t.motivo || '—',
+            'Ejecutado Por': t.ejecutadoPor || '—',
+            'Observaciones': t.observaciones || '—',
+            'Estado': t.estado || '—'
+        }));
+    };
+
+    const exportarExcel = (datos: TrasladoHEP[], esSeleccion: boolean) => {
+        if (datos.length === 0) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Sin datos',
+                detail: 'No hay registros para exportar con los filtros actuales.',
+                life: 3000
+            });
+            return;
+        }
+
+        const dataExport = obtenerDatosExportacion(datos);
+        const worksheet = XLSX.utils.json_to_sheet(dataExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Traslados');
+        
+        const fechaActual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const sufijo = esSeleccion ? '_seleccion' : '';
+        XLSX.writeFile(workbook, `historial_traslados_HEP_${fechaActual}${sufijo}.xlsx`);
+    };
+
+    const exportarPDF = () => {
+        if (trasladosVisibles.length === 0) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Sin datos',
+                detail: 'No hay registros para exportar con los filtros actuales.',
+                life: 3000
+            });
+            return;
+        }
+
+        const doc = new jsPDF({ orientation: 'landscape' });
+        const dataExport = obtenerDatosExportacion(trasladosVisibles);
+        const headers = Object.keys(dataExport[0]);
+        const rows = dataExport.map(row => Object.values(row));
+
+        // Título y Subtítulo
+        doc.setFontSize(18);
+        doc.text('Historial de Traslados — HEP', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Fecha de generación: ${new Date().toLocaleString('es-ES')}`, 14, 22);
+
+        autoTable(doc, {
+            startY: 28,
+            head: [headers],
+            body: rows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [15, 23, 42] }, // color slate-900
+            margin: { left: 14, right: 14 },
+            didDrawPage: (data) => {
+                const pageCount = doc.getNumberOfPages();
+                doc.setFontSize(8);
+                doc.text(
+                    `Página ${data.pageNumber} de ${pageCount}`,
+                    doc.internal.pageSize.width - 25,
+                    doc.internal.pageSize.height - 10
+                );
+            }
+        });
+
+        const fechaActual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        doc.save(`historial_traslados_HEP_${fechaActual}.pdf`);
+    };
+
 
     const estadoSeverity = (estado: string): 'warning' | 'success' | 'info' => {
         if (estado === 'Pendiente') return 'warning';
@@ -188,29 +240,394 @@ const HistorialTraslados: React.FC = () => {
         <span>{row.fechaEjecucion ? formatDate(row.fechaEjecucion) : '—'}</span>
     );
 
+    const handleDescargarActa = (t: TrasladoHEP) => {
+        const activoInfo = activos.find(a => a.codigoInstitucional === t.codigoActivo);
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Por favor, permita las ventanas emergentes en su navegador para poder descargar/imprimir el acta.');
+            return;
+        }
+
+        const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Acta de Traslado - ${t.referencia}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+                
+                body {
+                    font-family: 'Inter', sans-serif;
+                    color: #1e293b;
+                    margin: 0;
+                    padding: 40px;
+                    background-color: #ffffff;
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+                
+                .header-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-bottom: 2px solid #0f172a;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                
+                .header-logo {
+                    font-weight: 700;
+                    font-size: 24px;
+                    color: #0f172a;
+                    letter-spacing: -0.5px;
+                }
+                
+                .header-logo span {
+                    color: #3b82f6;
+                }
+                
+                .header-title {
+                    text-align: right;
+                }
+                
+                .header-title h1 {
+                    margin: 0;
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    text-transform: uppercase;
+                }
+                
+                .header-title p {
+                    margin: 4px 0 0 0;
+                    font-size: 11px;
+                    color: #64748b;
+                    font-weight: 500;
+                }
+                
+                .doc-info {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 15px;
+                    background-color: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 25px;
+                }
+                
+                .doc-info-item {
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .doc-info-label {
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    color: #64748b;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 4px;
+                }
+                
+                .doc-info-value {
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #0f172a;
+                }
+                
+                .section-title {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    text-transform: uppercase;
+                    border-bottom: 1px solid #e2e8f0;
+                    padding-bottom: 6px;
+                    margin-top: 25px;
+                    margin-bottom: 12px;
+                    letter-spacing: 0.5px;
+                }
+                
+                .data-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                
+                .data-table th {
+                    background-color: #f1f5f9;
+                    color: #475569;
+                    font-weight: 600;
+                    text-align: left;
+                    padding: 8px 12px;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    border: 1px solid #e2e8f0;
+                }
+                
+                .data-table td {
+                    padding: 8px 12px;
+                    border: 1px solid #e2e8f0;
+                    color: #334155;
+                }
+                
+                .description-box {
+                    background-color: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    padding: 12px;
+                    border-radius: 6px;
+                    min-height: 40px;
+                    color: #334155;
+                }
+                
+                .signatures-container {
+                    margin-top: 60px;
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 40px;
+                    page-break-inside: avoid;
+                }
+                
+                .signature-block {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                }
+                
+                .signature-line {
+                    width: 100%;
+                    border-top: 1px solid #94a3b8;
+                    margin-bottom: 10px;
+                }
+                
+                .signature-name {
+                    font-weight: 600;
+                    font-size: 11px;
+                    color: #0f172a;
+                }
+                
+                .signature-role {
+                    font-size: 10px;
+                    color: #64748b;
+                    margin-top: 2px;
+                }
+                
+                .footer {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 40px;
+                    right: 40px;
+                    text-align: center;
+                    font-size: 9px;
+                    color: #94a3b8;
+                    border-top: 1px solid #f1f5f9;
+                    padding-top: 10px;
+                }
+
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                    .no-print {
+                        display: none;
+                    }
+                    @page {
+                        size: portrait;
+                        margin: 20mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header-container">
+                <div class="header-logo">
+                    HEP<span>.frontend</span>
+                </div>
+                <div class="header-title">
+                    <h1>Acta de Entrega-Recepción y Traslado</h1>
+                    <p>Hospital Eugenio Espejo — Control de Activos Fijos</p>
+                </div>
+            </div>
+            
+            <div class="doc-info">
+                <div class="doc-info-item">
+                    <span class="doc-info-label">Referencia Acta</span>
+                    <span class="doc-info-value">${t.referencia}</span>
+                </div>
+                <div class="doc-info-item">
+                    <span class="doc-info-label">Fecha del Traslado</span>
+                    <span class="doc-info-value">${formatDate(t.fechaTraslado)}</span>
+                </div>
+                <div class="doc-info-item">
+                    <span class="doc-info-label">Fecha de Ejecución</span>
+                    <span class="doc-info-value">${t.fechaEjecucion ? formatDate(t.fechaEjecucion) : '—'}</span>
+                </div>
+            </div>
+            
+            <div class="section-title">1. Información del Activo Fijo</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Código Activo</th>
+                        <th style="width: 40%;">Nombre del Activo</th>
+                        <th style="width: 20%;">Categoría</th>
+                        <th style="width: 20%;">Número de Serie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: 600;">${t.codigoActivo}</td>
+                        <td>${t.nombreActivo}</td>
+                        <td>${t.categoria}</td>
+                        <td>${activoInfo?.numeroSerie || '—'}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px; color: #475569;">
+                                <div><strong>Marca:</strong> ${activoInfo?.marca || '—'}</div>
+                                <div><strong>Modelo:</strong> ${activoInfo?.modelo || '—'}</div>
+                                <div><strong>Estado Actual:</strong> ${activoInfo?.estadoActivo || '—'}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="section-title">2. Detalles de Origen y Destino</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Unidad/Ubicación de Origen</th>
+                        <th style="width: 50%;">Unidad/Ubicación de Destino</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong style="color: #0f172a;">${t.ubicacionOrigen}</strong><br/>
+                            <span style="font-size: 11px; color: #64748b;">Custodio Entrega: ${t.responsableAnterior}</span>
+                        </td>
+                        <td>
+                            <strong style="color: #0f172a;">${t.ubicacionDestino}</strong><br/>
+                            <span style="font-size: 11px; color: #64748b;">Custodio Recibe: ${t.nuevoResponsable}</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="section-title">3. Justificación y Motivo del Traslado</div>
+            <div class="description-box" style="margin-bottom: 20px;">
+                ${t.motivo}
+            </div>
+            
+            ${t.observaciones ? `
+            <div class="section-title">4. Observaciones Técnicas</div>
+            <div class="description-box" style="margin-bottom: 20px;">
+                ${t.observaciones}
+            </div>
+            ` : ''}
+            
+            <div class="section-title">5. Responsables y Firmas</div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 40px; line-height: 1.6;">
+                Se suscribe la presente acta de entrega-recepción y traslado autorizando el cambio físico y de custodia del bien detallado en este documento, de conformidad con las normativas internas del hospital.
+            </div>
+            
+            <div class="signatures-container">
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">${t.responsableAnterior}</div>
+                    <div class="signature-role">Entrega / Responsable Anterior</div>
+                </div>
+                
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">${t.nuevoResponsable}</div>
+                    <div class="signature-role">Recibe / Nuevo Responsable</div>
+                </div>
+                
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">${t.ejecutadoPor || '—'}</div>
+                    <div class="signature-role">Ejecuta / Técnico de Traslados</div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                Este documento es un comprobante de control interno emitido por el sistema HEP. Generado el ${new Date().toLocaleString('es-ES')}.
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
+
     const accionesBody = (row: TrasladoHEP) => (
         <div style={{ display: 'flex', gap: 8 }}>
-            <Button 
-                icon="pi pi-eye" 
-                className="p-button-rounded p-button-info" 
-                title="Ver detalle" 
+            <Button
+                icon="pi pi-eye"
+                className="p-button-rounded p-button-info"
+                title="Ver detalle"
                 onClick={() => {
                     setSelected(row);
                     setDetailVisible(true);
                 }}
             />
-            <Button 
-                icon="pi pi-file-pdf" 
-                className="p-button-rounded p-button-secondary" 
-                title="Descargar acta" 
+            <Button
+                icon="pi pi-file-pdf"
+                className="p-button-rounded p-button-secondary"
+                title="Descargar acta"
+                onClick={() => handleDescargarActa(row)}
             />
         </div>
     );
 
     return (
         <div className="p-4">
+            <Toast ref={toast} />
+
+            {/* Barra de herramientas de exportación */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <Button
+                    label="Exportar todo"
+                    icon="pi pi-download"
+                    severity="secondary"
+                    onClick={() => exportarExcel(trasladosVisibles, false)}
+                />
+                <Button
+                    label="Exportar selección"
+                    icon="pi pi-check-square"
+                    severity="info"
+                    disabled={selectedRows.length === 0}
+                    onClick={() => exportarExcel(selectedRows, true)}
+                />
+                <Button
+                    label="Exportar PDF"
+                    icon="pi pi-file-pdf"
+                    severity="danger"
+                    onClick={exportarPDF}
+                />
+            </div>
+
+            {/* Contador de registros */}
+            <div style={{ marginBottom: '16px', fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
+                Mostrando {trasladosVisibles.length} de {traslados.length} traslados | {selectedRows.length} seleccionados
+            </div>
+
             <DataTable
-                value={trasladosFiltrados}
+                value={trasladosVisibles}
+                selection={selectedRows}
+                onSelectionChange={e => setSelectedRows(e.value as TrasladoHEP[])}
+                selectionMode="multiple"
                 header={header}
                 globalFilter={globalFilter}
                 globalFilterFields={[
@@ -234,6 +651,7 @@ const HistorialTraslados: React.FC = () => {
                 responsiveLayout="scroll"
                 stripedRows
             >
+                <Column selectionMode="multiple" style={{ width: '3rem' }} />
                 <Column field="codigoActivo" header="Código del activo" sortable />
                 <Column field="referencia" header="Referencia" sortable />
                 <Column field="nombreActivo" header="Nombre del activo" sortable />
@@ -250,11 +668,11 @@ const HistorialTraslados: React.FC = () => {
             </DataTable>
 
             {/* Diálogo de Detalle */}
-            <Dialog 
-                header="Detalle de Traslado" 
-                visible={detailVisible} 
-                style={{ width: '560px' }} 
-                modal 
+            <Dialog
+                header="Detalle de Traslado"
+                visible={detailVisible}
+                style={{ width: '560px' }}
+                modal
                 onHide={() => setDetailVisible(false)}
             >
                 {selected ? (
