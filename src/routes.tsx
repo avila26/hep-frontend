@@ -14,6 +14,10 @@ import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
 import CargaMasiva from './pages/activos/CargaMasiva';
 import HojaDeVida from './pages/activos/HojaDeVida';
+import Preventivos from './pages/mantenimientos/Preventivos';
+import Correctivos from './pages/mantenimientos/Correctivos';
+import CerrarMantenimiento from './pages/mantenimientos/CerrarMantenimiento';
+import Historial from './pages/mantenimientos/Historial';
 
 export const routes: RouteObject[] = [
     {
@@ -73,10 +77,10 @@ export const routes: RouteObject[] = [
                 path: 'mantenimientos',
                 children: [
                     { index: true, element: <PlaceholderPage title="Mantenimientos" /> },
-                    { path: 'preventivos', element: <PlaceholderPage title="Mantenimientos Preventivos" /> },
-                    { path: 'correctivos', element: <PlaceholderPage title="Mantenimientos Correctivos" /> },
-                    { path: 'cerrar', element: <PlaceholderPage title="Cerrar Mantenimiento" /> },
-                    { path: 'historial', element: <PlaceholderPage title="Historial de Mantenimientos" /> }
+                    { path: 'preventivos', element: <Preventivos /> },
+                    { path: 'correctivos', element: <Correctivos /> },
+                    { path: 'cerrar', element: <CerrarMantenimiento /> },
+                    { path: 'historial', element: <Historial /> }
                 ]
             },
             // Bajas

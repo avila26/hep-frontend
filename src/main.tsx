@@ -5,6 +5,7 @@ import React from 'react';
     import { LayoutProvider } from './layout/context/layoutcontext';
     import { ActivosProvider } from './context/ActivosContext';
     import { TrasladosProvider } from './context/TrasladosContext';
+    import { MantenimientosProvider } from './context/MantenimientosContext';
     
     // Global Styles
     import './assets/tailwind.css';
@@ -19,9 +20,11 @@ import 'primeflex/primeflex.css';
         <React.StrictMode>
             <ActivosProvider>
                 <TrasladosProvider>
-                    <LayoutProvider>
-                        <RouterProvider router={router} />
-                    </LayoutProvider>
+                    <MantenimientosProvider>
+                        <LayoutProvider>
+                            <RouterProvider router={router} />
+                        </LayoutProvider>
+                    </MantenimientosProvider>
                 </TrasladosProvider>
             </ActivosProvider>
         </React.StrictMode>
