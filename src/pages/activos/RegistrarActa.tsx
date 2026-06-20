@@ -806,17 +806,6 @@ const RegistrarActa: React.FC = () => {
                         {lineaActiva === idx && (
                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium mb-1">Módulo Destino *</label>
-                                    <Dropdown
-                                        value={linea.moduloDestino}
-                                        options={MODULO_DESTINO_OPCIONES}
-                                        onChange={e => updateLinea(idx, 'moduloDestino', e.value)}
-                                        placeholder="Seleccione módulo"
-                                        className="w-full text-sm bg-white dark:bg-slate-950"
-                                        disabled={modoVista || !!CATEGORIA_BY_NOMBRE[linea.tipoActivo]}
-                                    />
-                                </div>
-                                <div>
                                     <label className="block text-xs font-medium mb-1">Tipo de Activo *</label>
                                     <CreatableSelect
                                         value={linea.tipoActivo ? { label: linea.tipoActivo, value: linea.tipoActivo } : null}
@@ -834,6 +823,17 @@ const RegistrarActa: React.FC = () => {
                                         createOptionPosition="first"
                                         noOptionsMessage={() => 'Escribe para crear o buscar...'}
                                         isDisabled={modoVista}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium mb-1">Categoría*</label>
+                                    <Dropdown
+                                        value={linea.moduloDestino}
+                                        options={MODULO_DESTINO_OPCIONES}
+                                        onChange={e => updateLinea(idx, 'moduloDestino', e.value)}
+                                        placeholder="Seleccione módulo"
+                                        className="w-full text-sm bg-white dark:bg-slate-950"
+                                        disabled={modoVista || !!CATEGORIA_BY_NOMBRE[linea.tipoActivo]}
                                     />
                                 </div>
                                 <div>
