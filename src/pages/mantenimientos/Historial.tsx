@@ -49,16 +49,14 @@ const formatDate = (date: Date | string | undefined): string => {
   if (!date) return '—';
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return '—';
-  return `${String(d.getDate()).padStart(2, '0')}/${
-    String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
 const formatDateTime = (date: string | undefined): string => {
   if (!date) return '—';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '—';
-  return `${formatDate(d)} ${String(d.getHours()).padStart(2, '0')}:${
-    String(d.getMinutes()).padStart(2, '0')}`;
+  return `${formatDate(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
 const HistorialMantenimientos: React.FC = () => {
@@ -79,7 +77,7 @@ const HistorialMantenimientos: React.FC = () => {
   const [dialogDetalle, setDialogDetalle] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<MantenimientoHEP | null>(null);
 
-  const dtRef = useRef<DataTable<MantenimientoHEP[]>>(null);
+  const dtRef = useRef<DataTable<any>>(null);
   const toast = useRef<Toast>(null);
 
   // Inicialización desde location.state
@@ -694,8 +692,8 @@ const HistorialMantenimientos: React.FC = () => {
                     selectedItem.estado === 'Programado'
                       ? 'warning'
                       : selectedItem.estado === 'En Proceso'
-                      ? 'danger'
-                      : 'success'
+                        ? 'danger'
+                        : 'success'
                   }
                   className="mt-1 w-max block"
                 />

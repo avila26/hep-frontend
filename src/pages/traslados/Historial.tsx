@@ -217,15 +217,16 @@ const HistorialTraslados: React.FC = () => {
                     showIcon
                     style={{ width: 150 }}
                 />
-                <span className="p-input-icon-left">
-                    <i className="pi pi-search" />
+                <div className="p-input-icon-left" style={{ position: 'relative' }}>
+                    <i className="pi pi-search" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
                     <InputText
                         type="search"
                         value={globalFilter}
                         onChange={e => setGlobalFilter(e.target.value)}
                         placeholder="Buscar..."
+                        style={{ paddingLeft: '2.2rem' }}
                     />
-                </span>
+                </div>
             </div>
         </div>
     );
@@ -659,11 +660,11 @@ const HistorialTraslados: React.FC = () => {
                 <Column field="ubicacionDestino" header="Destino" sortable />
                 <Column field="responsableAnterior" header="Resp. anterior" sortable />
                 <Column field="nuevoResponsable" header="Nuevo resp." sortable />
-                <Column header="Fecha traslado" body={fechaBody} sortable />
-                <Column header="Fecha ejecución" body={fechaEjecucionBody} sortable />
+                <Column field="fechaTraslado" header="Fecha traslado" body={fechaBody} sortable />
+                <Column field="fechaEjecucion" header="Fecha ejecución" body={fechaEjecucionBody} sortable />
                 <Column field="motivo" header="Motivo" />
                 <Column field="ejecutadoPor" header="Ejecutado por" sortable />
-                <Column header="Estado" body={estadoBody} sortable />
+                <Column field="estado" header="Estado" body={estadoBody} sortable />
                 <Column header="Acciones" body={accionesBody} />
             </DataTable>
 
@@ -676,24 +677,64 @@ const HistorialTraslados: React.FC = () => {
                 onHide={() => setDetailVisible(false)}
             >
                 {selected ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <p><strong>Referencia:</strong> {selected.referencia}</p>
-                        <p><strong>Código Activo:</strong> {selected.codigoActivo}</p>
-                        <p><strong>Nombre Activo:</strong> {selected.nombreActivo}</p>
-                        <p><strong>Categoría:</strong> {selected.categoria}</p>
-                        <p><strong>Ubicación de Origen:</strong> {selected.ubicacionOrigen}</p>
-                        <p><strong>Ubicación de Destino:</strong> {selected.ubicacionDestino}</p>
-                        <p><strong>Responsable Anterior:</strong> {selected.responsableAnterior}</p>
-                        <p><strong>Nuevo Responsable:</strong> {selected.nuevoResponsable}</p>
-                        <p><strong>Fecha Traslado:</strong> {formatDate(selected.fechaTraslado)}</p>
-                        <p><strong>Fecha Ejecución:</strong> {selected.fechaEjecucion ? formatDate(selected.fechaEjecucion) : '—'}</p>
-                        <p><strong>Ejecutado por:</strong> {selected.ejecutadoPor || '—'}</p>
-                        <p><strong>Motivo:</strong> {selected.motivo}</p>
-                        <p><strong>Observaciones:</strong> {selected.observaciones || 'Sin observaciones'}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                            <strong>Estado:</strong>
-                            <Tag value={selected.estado} severity={estadoSeverity(selected.estado)} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                        {/* Cabecera del detalle */}
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px' }}>Referencia</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{selected.referencia}</div>
+                            </div>
+                            <Tag value={selected.estado} severity={estadoSeverity(selected.estado)} style={{ fontSize: '12px', padding: '4px 12px' }} />
                         </div>
+
+                        {/* Activo */}
+                        <div style={{ marginBottom: '12px' }}>
+                            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>Activo</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '13px' }}>
+                                <div><span style={{ color: '#94a3b8', fontSize: '11px' }}>Código: </span><strong>{selected.codigoActivo}</strong></div>
+                                <div><span style={{ color: '#94a3b8', fontSize: '11px' }}>Categoría: </span>{selected.categoria}</div>
+                                <div style={{ gridColumn: '1 / -1' }}><span style={{ color: '#94a3b8', fontSize: '11px' }}>Nombre: </span>{selected.nombreActivo}</div>
+                            </div>
+                        </div>
+
+                        {/* Origen → Destino */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'center', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                            <div>
+                                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#3b82f6', fontWeight: 700, marginBottom: '4px' }}>Origen</div>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e3a5f' }}>{selected.ubicacionOrigen}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Entrega: {selected.responsableAnterior}</div>
+                            </div>
+                            <i className="pi pi-arrow-right" style={{ color: '#3b82f6', fontSize: '18px' }} />
+                            <div>
+                                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#3b82f6', fontWeight: 700, marginBottom: '4px' }}>Destino</div>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e3a5f' }}>{selected.ubicacionDestino}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Recibe: {selected.nuevoResponsable}</div>
+                            </div>
+                        </div>
+
+                        {/* Fechas y ejecutor */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                            {[{ label: 'Fecha traslado', value: formatDate(selected.fechaTraslado) }, { label: 'Fecha ejecución', value: selected.fechaEjecucion ? formatDate(selected.fechaEjecucion) : '—' }, { label: 'Ejecutado por', value: selected.ejecutadoPor || '—' }].map(item => (
+                                <div key={item.label} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px 10px' }}>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: '3px' }}>{item.label}</div>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>{item.value}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Motivo */}
+                        <div style={{ marginBottom: '8px' }}>
+                            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '4px' }}>Motivo</div>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 12px', fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>{selected.motivo}</div>
+                        </div>
+
+                        {/* Observaciones */}
+                        {selected.observaciones && (
+                            <div>
+                                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '4px' }}>Observaciones</div>
+                                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '10px 12px', fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>{selected.observaciones}</div>
+                            </div>
+                        )}
                     </div>
                 ) : null}
             </Dialog>
