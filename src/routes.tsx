@@ -18,6 +18,23 @@ import Preventivos from './pages/mantenimientos/Preventivos';
 import Correctivos from './pages/mantenimientos/Correctivos';
 import CerrarMantenimiento from './pages/mantenimientos/CerrarMantenimiento';
 import Historial from './pages/mantenimientos/Historial';
+import Solicitudes from './pages/bajas/Solicitudes';
+import Revision from './pages/bajas/Revision';
+import Aprobados from './pages/bajas/Aprobados';
+import Egresos from './pages/bajas/Egresos';
+import ReporteActivos from './pages/reportes/Activos';
+import ReporteMantenimientos from './pages/reportes/Mantenimientos';
+import ReporteTraslados from './pages/reportes/Traslados';
+import ReporteDepreciacion from './pages/reportes/Depreciacion';
+import Usuarios from './pages/administracion/Usuarios';
+import Roles from './pages/administracion/Roles';
+import Catalogos from './pages/administracion/Catalogos';
+import Auditoria from './pages/administracion/Auditoria';
+
+
+
+
+
 
 export const routes: RouteObject[] = [
     {
@@ -88,11 +105,11 @@ export const routes: RouteObject[] = [
                 path: 'bajas',
                 children: [
                     { index: true, element: <PlaceholderPage title="Bajas" /> },
-                    { path: 'solicitudes', element: <PlaceholderPage title="Solicitudes de Baja" /> },
-                    { path: 'informes', element: <PlaceholderPage title="Informes Técnicos" /> },
-                    { path: 'revision', element: <PlaceholderPage title="Revisión de Bajas" /> },
-                    { path: 'aprobados', element: <PlaceholderPage title="Bajas Aprobadas" /> },
-                    { path: 'egresos', element: <PlaceholderPage title="Egresos" /> }
+                    { path: 'solicitudes', element: <Solicitudes /> },
+                    { path: 'informes', element: <Solicitudes /> },
+                    { path: 'revision', element: <Revision /> },
+                    { path: 'aprobados', element: <Aprobados /> },
+                    { path: 'egresos', element: <Egresos /> }
                 ]
             },
             // Reportes
@@ -100,10 +117,10 @@ export const routes: RouteObject[] = [
                 path: 'reportes',
                 children: [
                     { index: true, element: <PlaceholderPage title="Reportes" /> },
-                    { path: 'activos', element: <PlaceholderPage title="Reporte de Activos" /> },
-                    { path: 'mantenimientos', element: <PlaceholderPage title="Reporte de Mantenimientos" /> },
-                    { path: 'traslados', element: <PlaceholderPage title="Reporte de Traslados" /> },
-                    { path: 'depreciacion', element: <PlaceholderPage title="Reporte de Depreciación" /> }
+                    { path: 'activos', element: <ReporteActivos /> },
+                    { path: 'mantenimientos', element: <ReporteMantenimientos /> },
+                    { path: 'traslados', element: <ReporteTraslados /> },
+                    { path: 'depreciacion', element: <ReporteDepreciacion /> },
                 ]
             },
             // Administración
@@ -111,10 +128,10 @@ export const routes: RouteObject[] = [
                 path: 'administracion',
                 children: [
                     { index: true, element: <PlaceholderPage title="Administración" /> },
-                    { path: 'usuarios', element: <PlaceholderPage title="Usuarios" /> },
-                    { path: 'roles', element: <PlaceholderPage title="Roles" /> },
-                    { path: 'catalogos', element: <PlaceholderPage title="Catálogos" /> },
-                    { path: 'auditoria', element: <PlaceholderPage title="Auditoría" /> }
+                    { path: 'usuarios', element: <Usuarios /> },
+                    { path: 'roles', element: <Roles /> },
+                    { path: 'catalogos', element: <Catalogos /> },
+                    { path: 'auditoria', element: <Auditoria /> }
                 ]
             }
         ]
