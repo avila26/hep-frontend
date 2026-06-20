@@ -6,7 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { Card } from 'primereact/card';
 import { Dropdown } from 'primereact/dropdown';
-import { useActivos, Activo } from '../../context/ActivosContext';
+import { useActivos, Activo, AtributosEquipoBiomedico, AtributosEquipoInformatico } from '../../context/ActivosContext';
 import { useNavigate } from 'react-router-dom';
 import { BarcodeDownload } from '../../components/BarcodeDownload';
 
@@ -567,7 +567,301 @@ export const ConsultarActivos: React.FC = () => {
                             </div>
                         </section>
 
-                        {/* SECCIÓN 6: Código de Barras */}
+                        {/* SECCIÓN 6: Ficha Técnica Específica (EQM o EQI) */}
+                        {selectedActivo.atributosEspecificos && (
+                            <section className="mb-5">
+                                {/* --- EQUIPO BIOMÉDICO --- */}
+                                {selectedActivo.categoriaActivo?.includes('EQM') && (() => {
+                                    const b = selectedActivo.atributosEspecificos as AtributosEquipoBiomedico;
+                                    return (
+                                        <>
+                                            <h3 className="text-sm uppercase tracking-normal text-blue-700 font-bold mb-2 border-b border-blue-100 pb-2">
+                                                <i className="pi pi-heart mr-2 text-blue-400" />Ficha Técnica — Equipo Biomédico
+                                            </h3>
+
+                                            {/* Datos técnicos */}
+                                            {(b.voltaje || b.corriente || b.potencia || b.frecuencia || b.numeroFases || b.bateria || b.numeroCanales || b.memoria || b.tipoImpresora) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Datos Técnicos</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {[
+                                                            { label: 'Voltaje', value: b.voltaje },
+                                                            { label: 'N.º de Fases', value: b.numeroFases },
+                                                            { label: 'Corriente', value: b.corriente },
+                                                            { label: 'Potencia', value: b.potencia },
+                                                            { label: 'Frecuencia', value: b.frecuencia },
+                                                            { label: 'Batería', value: b.bateria },
+                                                            { label: 'N.º de Canales', value: b.numeroCanales },
+                                                            { label: 'Memoria', value: b.memoria },
+                                                            { label: 'Tipo de Impresora', value: b.tipoImpresora },
+                                                        ].filter(f => f.value).map(f => (
+                                                            <div key={f.label}>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">{f.label}</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{f.value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Requerimientos de funcionamiento */}
+                                            {b.requerimientosFuncionamiento && b.requerimientosFuncionamiento.length > 0 && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Requerimientos de Funcionamiento</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {b.requerimientosFuncionamiento.map(r => (
+                                                            <span key={r} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100">{r}</span>
+                                                        ))}
+                                                        {b.requerimientoOtroDetalle && (
+                                                            <span className="px-2 py-0.5 bg-slate-50 text-slate-700 text-xs rounded border border-slate-200">Otro: {b.requerimientoOtroDetalle}</span>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Parámetros medidos */}
+                                            {b.parametrosMedidos && b.parametrosMedidos.length > 0 && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Parámetros Medidos</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {b.parametrosMedidos.map(p => (
+                                                            <span key={p} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100">{p}</span>
+                                                        ))}
+                                                        {b.parametroOtroDetalle && (
+                                                            <span className="px-2 py-0.5 bg-slate-50 text-slate-700 text-xs rounded border border-slate-200">Otro: {b.parametroOtroDetalle}</span>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Garantía */}
+                                            {(b.tieneGarantia !== undefined || b.fechaFinGarantia || b.frecuenciaMantenimientoPreventivo || b.responsableMantenimiento) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Garantía y Mantenimiento</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {b.tieneGarantia !== undefined && (
+                                                            <div>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">Tiene Garantía</div>
+                                                                <div className="mt-1">
+                                                                    {b.tieneGarantia
+                                                                        ? <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded">Sí</span>
+                                                                        : <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded">No</span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {b.fechaFinGarantia && (
+                                                            <div>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">Fin de Garantía</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">
+                                                                    {new Date(b.fechaFinGarantia).toLocaleDateString('es-ES')}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {b.frecuenciaMantenimientoPreventivo && (
+                                                            <div>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">Frec. Mant. Preventivo</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{b.frecuenciaMantenimientoPreventivo}</div>
+                                                            </div>
+                                                        )}
+                                                        {b.responsableMantenimiento && (
+                                                            <div>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">Responsable Mantenimiento</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{b.responsableMantenimiento}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Proveedores */}
+                                            {[
+                                                { label: 'Fabricante', data: b.fabricante },
+                                                { label: 'Proveedor de Consumibles', data: b.proveedorConsumibles },
+                                                { label: 'Proveedor de Mantenimiento', data: b.proveedorMantenimiento },
+                                                { label: 'Proveedor de Calibración', data: b.proveedorCalibracion },
+                                            ].filter(p => p.data?.nombre).map(p => (
+                                                <div key={p.label} className="mt-4">
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">{p.label}</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-50 rounded p-3 border border-slate-100">
+                                                        {p.data!.nombre && <div><span className="text-xs text-slate-400 block">Nombre</span><span className="text-sm text-slate-700">{p.data!.nombre}</span></div>}
+                                                        {p.data!.telefono && <div><span className="text-xs text-slate-400 block">Teléfono</span><span className="text-sm text-slate-700">{p.data!.telefono}</span></div>}
+                                                        {p.data!.email && <div><span className="text-xs text-slate-400 block">Email</span><span className="text-sm text-slate-700">{p.data!.email}</span></div>}
+                                                        {p.data!.direccion && <div><span className="text-xs text-slate-400 block">Dirección</span><span className="text-sm text-slate-700">{p.data!.direccion}</span></div>}
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {/* Accesorios */}
+                                            {b.accesorios && b.accesorios.length > 0 && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Accesorios</h4>
+                                                    <div className="space-y-1">
+                                                        {b.accesorios.map((acc, i) => (
+                                                            <div key={i} className="flex justify-between items-center text-sm bg-slate-50 rounded px-3 py-1.5 border border-slate-100">
+                                                                <span className="text-slate-800">{acc.nombre}</span>
+                                                                <span className="text-xs text-slate-500 bg-white border border-slate-200 rounded px-2 py-0.5">{acc.estado}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Información Técnica */}
+                                            {b.informacionTecnica && b.informacionTecnica.length > 0 && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Información Técnica Adicional</h4>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                        {b.informacionTecnica.map((item, i) => (
+                                                            <li key={i} className="text-sm text-slate-700">{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                </>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+
+                                {/* --- EQUIPO INFORMÁTICO --- */}
+                                {selectedActivo.categoriaActivo?.includes('EQI') && (() => {
+                                    const inf = selectedActivo.atributosEspecificos as AtributosEquipoInformatico;
+                                    return (
+                                        <>
+                                            <h3 className="text-sm uppercase tracking-normal text-purple-700 font-bold mb-2 border-b border-purple-100 pb-2">
+                                                <i className="pi pi-desktop mr-2 text-purple-400" />Ficha Técnica — Equipo Informático
+                                            </h3>
+
+                                            {/* Procesador & Memoria */}
+                                            {(inf.procesadorMarca || inf.procesadorTipo || inf.numeroProcesadores || inf.numeroNucleos || inf.ramMarca || inf.ramCapacidad || inf.ramTipo) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Procesador y Memoria RAM</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {[
+                                                            { label: 'Marca Procesador', value: inf.procesadorMarca },
+                                                            { label: 'Tipo Procesador', value: inf.procesadorTipo },
+                                                            { label: 'N.º Procesadores', value: inf.numeroProcesadores },
+                                                            { label: 'N.º Núcleos', value: inf.numeroNucleos },
+                                                            { label: 'Marca RAM', value: inf.ramMarca },
+                                                            { label: 'Capacidad RAM', value: inf.ramCapacidad },
+                                                            { label: 'Tipo RAM', value: inf.ramTipo },
+                                                        ].filter(f => f.value).map(f => (
+                                                            <div key={f.label}>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">{f.label}</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{f.value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Almacenamiento & Tarjeta Madre */}
+                                            {(inf.almacenamientoMarca || inf.almacenamientoCapacidad || inf.tarjetaMadreMarca || inf.tarjetaMadreModelo) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Almacenamiento y Tarjeta Madre</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {[
+                                                            { label: 'Marca Almacenamiento', value: inf.almacenamientoMarca },
+                                                            { label: 'Capacidad Almacenamiento', value: inf.almacenamientoCapacidad },
+                                                            { label: 'Marca T. Madre', value: inf.tarjetaMadreMarca },
+                                                            { label: 'Modelo T. Madre', value: inf.tarjetaMadreModelo },
+                                                        ].filter(f => f.value).map(f => (
+                                                            <div key={f.label}>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">{f.label}</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{f.value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Periféricos */}
+                                            {(inf.mouse?.marca || inf.teclado?.marca) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Periféricos</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {inf.mouse?.marca && (
+                                                            <div className="bg-slate-50 rounded p-3 border border-slate-100">
+                                                                <div className="text-xs font-semibold text-slate-600 mb-2">Mouse</div>
+                                                                <div className="grid grid-cols-2 gap-1 text-xs">
+                                                                    {inf.mouse.marca && <div><span className="text-slate-400">Marca: </span><span className="text-slate-700">{inf.mouse.marca}</span></div>}
+                                                                    {inf.mouse.modelo && <div><span className="text-slate-400">Modelo: </span><span className="text-slate-700">{inf.mouse.modelo}</span></div>}
+                                                                    {inf.mouse.serie && <div><span className="text-slate-400">Serie: </span><span className="text-slate-700">{inf.mouse.serie}</span></div>}
+                                                                    {inf.mouse.color && <div><span className="text-slate-400">Color: </span><span className="text-slate-700">{inf.mouse.color}</span></div>}
+                                                                    {inf.mouse.tipoInterfaz && <div><span className="text-slate-400">Interfaz: </span><span className="text-slate-700">{inf.mouse.tipoInterfaz}</span></div>}
+                                                                    {inf.mouse.codigoActivoFijo && <div><span className="text-slate-400">Cód. Activo: </span><span className="text-slate-700">{inf.mouse.codigoActivoFijo}</span></div>}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {inf.teclado?.marca && (
+                                                            <div className="bg-slate-50 rounded p-3 border border-slate-100">
+                                                                <div className="text-xs font-semibold text-slate-600 mb-2">Teclado</div>
+                                                                <div className="grid grid-cols-2 gap-1 text-xs">
+                                                                    {inf.teclado.marca && <div><span className="text-slate-400">Marca: </span><span className="text-slate-700">{inf.teclado.marca}</span></div>}
+                                                                    {inf.teclado.modelo && <div><span className="text-slate-400">Modelo: </span><span className="text-slate-700">{inf.teclado.modelo}</span></div>}
+                                                                    {inf.teclado.serie && <div><span className="text-slate-400">Serie: </span><span className="text-slate-700">{inf.teclado.serie}</span></div>}
+                                                                    {inf.teclado.color && <div><span className="text-slate-400">Color: </span><span className="text-slate-700">{inf.teclado.color}</span></div>}
+                                                                    {inf.teclado.tipoInterfaz && <div><span className="text-slate-400">Interfaz: </span><span className="text-slate-700">{inf.teclado.tipoInterfaz}</span></div>}
+                                                                    {inf.teclado.codigoActivoFijo && <div><span className="text-slate-400">Cód. Activo: </span><span className="text-slate-700">{inf.teclado.codigoActivoFijo}</span></div>}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Red */}
+                                            {inf.redHabilitada && inf.interfacesRed && inf.interfacesRed.length > 0 && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Interfaces de Red</h4>
+                                                    <div className="space-y-2">
+                                                        {inf.interfacesRed.map((iface, idx) => (
+                                                            <div key={idx} className="bg-slate-50 rounded p-3 border border-slate-100">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="text-xs font-bold text-slate-600 uppercase">{iface.tipo}</span>
+                                                                    <span className={`px-2 py-0.5 text-xs rounded ${iface.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>{iface.estado}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-xs">
+                                                                    {iface.ip && <div><span className="text-slate-400">IP: </span><span className="text-slate-700 font-mono">{iface.ip}</span></div>}
+                                                                    {iface.mac && <div><span className="text-slate-400">MAC: </span><span className="text-slate-700 font-mono">{iface.mac}</span></div>}
+                                                                    {iface.gateway && <div><span className="text-slate-400">Gateway: </span><span className="text-slate-700 font-mono">{iface.gateway}</span></div>}
+                                                                    {iface.vlan && <div><span className="text-slate-400">VLAN: </span><span className="text-slate-700">{iface.vlan}</span></div>}
+                                                                    {iface.idVlan && <div><span className="text-slate-400">ID VLAN: </span><span className="text-slate-700">{iface.idVlan}</span></div>}
+                                                                    {iface.red && <div><span className="text-slate-400">Red: </span><span className="text-slate-700 font-mono">{iface.red}</span></div>}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Software */}
+                                            {(inf.sistemaOperativoNombre || inf.softwareOfimaticoNombre || inf.usuarioAcceso) && (
+                                                <>
+                                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Software</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {[
+                                                            { label: 'Sistema Operativo', value: inf.sistemaOperativoNombre },
+                                                            { label: 'Versión S.O.', value: inf.sistemaOperativoVersion },
+                                                            { label: 'Licencia S.O.', value: inf.sistemaOperativoLicencia },
+                                                            { label: 'Software Ofimático', value: inf.softwareOfimaticoNombre },
+                                                            { label: 'Versión Ofimática', value: inf.softwareOfimaticoVersion },
+                                                            { label: 'Usuario de Acceso', value: inf.usuarioAcceso },
+                                                        ].filter(f => f.value).map(f => (
+                                                            <div key={f.label}>
+                                                                <div className="text-xs text-slate-500 uppercase p-1">{f.label}</div>
+                                                                <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{f.value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </section>
+                        )}
+
+                        {/* SECCIÓN 7: Código de Barras */}
                         <section className="mb-5">
                             <h3 className="text-sm uppercase tracking-normal text-slate-700 font-bold mb-2 border-b border-slate-200 pb-2">Código de Barras</h3>
                             <div className="mt-4 max-w-sm mx-auto">

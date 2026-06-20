@@ -1,5 +1,252 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export interface AtributosEquipoBiomedico {
+    voltaje?: string;
+    numeroFases?: string;
+    corriente?: string;
+    potencia?: string;
+    frecuencia?: string;
+    bateria?: string;
+    numeroCanales?: string;
+    memoria?: string;
+    tipoImpresora?: string;
+
+    requerimientosFuncionamiento?: string[];
+    requerimientoOtroDetalle?: string;
+
+    parametrosMedidos?: string[];
+    parametroOtroDetalle?: string;
+
+    fabricante?: { nombre: string; direccion: string; telefono: string; email: string };
+    proveedorConsumibles?: { nombre: string; direccion: string; telefono: string; email: string };
+    proveedorMantenimiento?: { nombre: string; direccion: string; telefono: string; email: string };
+    proveedorCalibracion?: { nombre: string; direccion: string; telefono: string; email: string };
+
+    tieneGarantia?: boolean;
+    fechaFinGarantia?: Date | null;
+    frecuenciaMantenimientoPreventivo?: string;
+    responsableMantenimiento?: string;
+
+    // Tipo de posesión: Propio o Apoyo Tecnológico
+    tipoPostesion?: 'Propio' | 'ApoyoTecnologico';
+    empresaApoyo?: string;
+    ordenServicio?: string;
+    responsableOrden?: string;
+    fechaInicioProceso?: Date | null;
+    fechaFinProceso?: Date | null;
+
+    accesorios?: { nombre: string; estado: string }[];
+
+    informacionTecnica?: string[];
+}
+
+export interface AtributosEquipoInformatico {
+    procesadorMarca?: string;
+    procesadorTipo?: string;
+    numeroProcesadores?: string;
+    numeroNucleos?: string;
+    ramMarca?: string;
+    ramCapacidad?: string;
+    ramTipo?: string;
+    almacenamientoMarca?: string;
+    almacenamientoCapacidad?: string;
+    tarjetaMadreMarca?: string;
+    tarjetaMadreModelo?: string;
+
+    mouse?: { marca: string; modelo: string; serie: string; color: string; tipoInterfaz: string; codigoActivoFijo: string };
+    teclado?: { marca: string; modelo: string; serie: string; color: string; tipoInterfaz: string; codigoActivoFijo: string };
+
+    redHabilitada?: boolean;
+    interfacesRed?: {
+        tipo: 'LAN' | 'WAN' | 'Wireless';
+        vlan: string;
+        idVlan: string;
+        red: string;
+        ip: string;
+        gateway: string;
+        mac: string;
+        estado: string;
+    }[];
+
+    sistemaOperativoNombre?: string;
+    sistemaOperativoVersion?: string;
+    sistemaOperativoLicencia?: string;
+    softwareOfimaticoNombre?: string;
+    softwareOfimaticoVersion?: string;
+    usuarioAcceso?: string;
+    passwordAcceso?: string;
+}
+
+// ─── Atributos: CPU / Unidad Central (y Laptop, Tablet, Servidor) ────────────
+export interface AtributosCPU {
+    procesadorMarca?: string;
+    procesadorTipo?: string;
+    numeroProcesadores?: string;
+    numeroNucleos?: string;
+    ramMarca?: string;
+    ramCapacidad?: string;
+    ramTipo?: string;
+    almacenamientoMarca?: string;
+    almacenamientoCapacidad?: string;
+    tarjetaMadreMarca?: string;
+    tarjetaMadreModelo?: string;
+    redHabilitada?: boolean;
+    interfacesRed?: {
+        tipo: 'LAN' | 'WAN' | 'Wireless';
+        vlan: string;
+        idVlan: string;
+        red: string;
+        ip: string;
+        gateway: string;
+        mac: string;
+        estado: string;
+    }[];
+    sistemaOperativoNombre?: string;
+    sistemaOperativoVersion?: string;
+    sistemaOperativoLicencia?: string;
+    softwareOfimaticoNombre?: string;
+    softwareOfimaticoVersion?: string;
+    usuarioAcceso?: string;
+    passwordAcceso?: string;
+    conjuntoEstacion?: string;
+}
+
+// ─── Atributos: Monitor ───────────────────────────────────────────────────────
+export interface AtributosMonitor {
+    pulgadas?: string;
+    conjuntoEstacion?: string;
+}
+
+// ─── Atributos: Teclado ───────────────────────────────────────────────────────
+export interface AtributosTeclado {
+    interfaz?: string;
+    conjuntoEstacion?: string;
+}
+
+// ─── Atributos: Mouse ────────────────────────────────────────────────────────
+export interface AtributosMouse {
+    interfaz?: string;
+    conjuntoEstacion?: string;
+}
+
+// ─── Atributos: Impresora de Red ─────────────────────────────────────────────
+export interface AtributosImpresoraRed {
+    ip?: string;
+    mac?: string;
+    nombreImpresora?: string;
+    correoAsociado?: string;
+    contador?: number | null;
+    usuarioPuerto?: string;
+}
+
+// ─── Atributos: Teléfono IP ───────────────────────────────────────────────────
+export interface AtributosTelefonoIp {
+    extension?: string;
+    ip?: string;
+    mac?: string;
+    responsables?: string;
+    especialidad?: string;
+}
+
+// ─── Atributos: CCTV / NVR ───────────────────────────────────────────────────
+export interface AtributosCCTV {
+    tipoDispositivo?: string;
+    ip?: string;
+    etiquetaPunto?: string;
+}
+
+// ─── Atributos: Access Point / WiFi ──────────────────────────────────────────
+export interface AtributosAccessPoint {
+    mac?: string;
+    codHSN?: string;
+    etiquetaPunto?: string;
+    puertoSwitch?: string;
+}
+
+// ─── Atributos: Equipo de Laboratorio (EQL) ──────────────────────────────────
+export interface AtributosLaboratorio {
+    tipoDispositivo?: string;
+    marcaSerieCPU?: string;
+    marcaSerieMonitor?: string;
+    ipLanHospital?: string;
+    macLanHospital?: string;
+    ipLanBiomedica?: string;
+    macLanBiomedica?: string;
+    puertoCnx?: string;
+    usuario?: string;
+    // TODO: cifrar antes de persistir — actualmente texto plano en localStorage
+    password?: string;
+    licenciaWindows?: boolean;
+    antivirus?: boolean;
+    firewall?: boolean;
+    impresoraAsociadaMarca?: string;
+    impresoraAsociadaSerie?: string;
+    // Garantía / Apoyo Tecnológico
+    tipoPostesion?: 'Propio' | 'ApoyoTecnologico';
+    tieneGarantia?: boolean;
+    fechaFinGarantia?: Date | null;
+    frecuenciaMantenimientoPreventivo?: string;
+    responsableMantenimiento?: string;
+    empresaApoyo?: string;
+    ordenServicio?: string;
+    responsableOrden?: string;
+    fechaInicioProceso?: Date | null;
+    fechaFinProceso?: Date | null;
+}
+
+// ─── Atributos: Equipo de Rayos e Imagen (EQR) ────────────────────────────────
+export interface AtributosRayosImagen {
+    // Tipo de equipo
+    tipoEquipo?: string; // Rayos X, TAC, Mamógrafo, Fluoroscopio, Ecógrafo, RM...
+
+    // Parámetros de radiación (solo equipos ionizantes)
+    tensionPicoKvp?: string;
+    corrienteMa?: string;
+    tiempoExposicionMs?: string;
+    potenciaMaxKw?: string;
+    dosisEntradaMgy?: string;
+    filtracionInherenteAlMm?: string;
+    distanciaFocoReceptorCm?: string;
+
+    // Licenciamiento SCAN (Subsecretaría de Control y Aplicaciones Nucleares)
+    numeroLicenciaSCAN?: string;
+    fechaEmisionLicencia?: Date | null;
+    fechaVencimientoLicencia?: Date | null;
+    titularLicencia?: string;
+    categoriaFuenteSCAN?: string; // Cat. 1–5 según IAEA/SCAN, o 'No aplica'
+    estadoLicencia?: string; // Vigente / Vencida / En renovación / No requiere
+
+    // Oficial de Protección Radiológica (OPR)
+    oprNombre?: string;
+    oprTelefono?: string;
+    oprEmail?: string;
+
+    // Blindaje y seguridad de sala (ionizantes)
+    materialBlindaje?: string;
+    grosorBlindajePbMm?: string;
+    areaControladaDefinida?: boolean;
+    planEmergenciaRadiologica?: boolean;
+
+    // Control de calidad
+    frecuenciaCalibración?: string;
+    fechaUltimoControlCalidad?: Date | null;
+    fechaProximoControlCalidad?: Date | null;
+    laboratorioCalibración?: string;
+    dosimetrosPersonales?: boolean;
+
+    // Garantía / Apoyo Tecnológico
+    tipoPostesion?: 'Propio' | 'ApoyoTecnologico';
+    tieneGarantia?: boolean;
+    fechaFinGarantia?: Date | null;
+    frecuenciaMantenimientoPreventivo?: string;
+    responsableMantenimiento?: string;
+    empresaApoyo?: string;
+    ordenServicio?: string;
+    responsableOrden?: string;
+    fechaInicioProceso?: Date | null;
+    fechaFinProceso?: Date | null;
+}
+
 export interface Activo {
     idActivo: number;
     codigoInstitucional: string;
@@ -32,7 +279,9 @@ export interface Activo {
     estadoActivo: string;
     condicionDepreciacion: string;
     ubicacion: string;
+    atributosEspecificos?: AtributosEquipoBiomedico | AtributosEquipoInformatico | AtributosCPU | AtributosMonitor | AtributosTeclado | AtributosMouse | AtributosImpresoraRed | AtributosTelefonoIp | AtributosCCTV | AtributosAccessPoint | AtributosLaboratorio | AtributosRayosImagen | null;
 }
+
 
 export interface ResultadoImportacion {
     numeroFila: number;
@@ -88,9 +337,19 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const activosGuardados = localStorage.getItem('activos_hep');
         if (activosGuardados) {
             try {
+                const parseAtributosEspecificos = (attrs: any) => {
+                    if (!attrs) return attrs;
+                    const copy = { ...attrs };
+                    if (copy.fechaFinGarantia) {
+                        copy.fechaFinGarantia = new Date(copy.fechaFinGarantia);
+                    }
+                    return copy;
+                };
+
                 const activosParsed = JSON.parse(activosGuardados).map((a: Activo) => ({
                     ...a,
-                    fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null
+                    fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null,
+                    atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
                 setActivos(activosParsed);
             } catch (error) {
