@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { DataTable, DataTableRef } from 'primereact/datatable';
+import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
@@ -79,7 +79,7 @@ const HistorialMantenimientos: React.FC = () => {
   const [dialogDetalle, setDialogDetalle] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<MantenimientoHEP | null>(null);
 
-  const dtRef = useRef<DataTableRef>(null);
+  const dtRef = useRef<DataTable<any>>(null);
   const toast = useRef<Toast>(null);
 
   // Inicialización desde location.state

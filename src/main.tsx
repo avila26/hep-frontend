@@ -4,6 +4,7 @@ import React from 'react';
     import routes from './routes';
     import { LayoutProvider } from './layout/context/layoutcontext';
     import { ActivosProvider } from './context/ActivosContext';
+    import { ActasProvider } from './context/ActasContext';
     import { TrasladosProvider } from './context/TrasladosContext';
     import { MantenimientosProvider } from './context/MantenimientosContext';
     
@@ -19,13 +20,16 @@ import 'primeflex/primeflex.css';
     ReactDOM.createRoot(document.getElementById('root')!).render(
         <React.StrictMode>
             <ActivosProvider>
-                <TrasladosProvider>
-                    <MantenimientosProvider>
-                        <LayoutProvider>
-                            <RouterProvider router={router} />
-                        </LayoutProvider>
-                    </MantenimientosProvider>
-                </TrasladosProvider>
+                <ActasProvider>
+                    <TrasladosProvider>
+                        <MantenimientosProvider>
+                            <LayoutProvider>
+                                <RouterProvider router={router} />
+                            </LayoutProvider>
+                        </MantenimientosProvider>
+                    </TrasladosProvider>
+                </ActasProvider>
             </ActivosProvider>
         </React.StrictMode>
     );
+

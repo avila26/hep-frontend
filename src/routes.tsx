@@ -14,6 +14,9 @@ import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
 import CargaMasiva from './pages/activos/CargaMasiva';
 import HojaDeVida from './pages/activos/HojaDeVida';
+import RegistrarActa from './pages/activos/RegistrarActa';
+import ConsultarActas from './pages/activos/ConsultarActas';
+import IngresoActivo from './pages/activos/IngresoActivo';
 import Preventivos from './pages/mantenimientos/Preventivos';
 import Correctivos from './pages/mantenimientos/Correctivos';
 import CerrarMantenimiento from './pages/mantenimientos/CerrarMantenimiento';
@@ -53,12 +56,16 @@ export const routes: RouteObject[] = [
                 path: 'activos',
                 children: [
                     { index: true, element: <PlaceholderPage title="Activos" /> },
+                    { path: 'ingresar', element: <IngresoActivo /> },
                     { path: 'registrar', element: <RegistrarActivo /> },
                     { path: 'consultar', element: <ConsultarActivos /> },
                     { path: 'carga-masiva', element: <CargaMasiva /> },
                     { path: 'codigo-barras', element: <PlaceholderPage title="Código de Barras" /> },
                     { path: 'hoja-vida', element: <HojaDeVida /> },
-                    { path: 'hoja-vida/:idActivo', element: <HojaDeVida /> }
+                    { path: 'hoja-vida/:idActivo', element: <HojaDeVida /> },
+                    { path: 'actas', element: <ConsultarActas /> },
+                    { path: 'actas/nueva', element: <RegistrarActa /> },
+                    { path: 'actas/:idActa', element: <RegistrarActa /> }
                 ]
             },
             // Traslados

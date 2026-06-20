@@ -280,6 +280,12 @@ export interface Activo {
     condicionDepreciacion: string;
     ubicacion: string;
     atributosEspecificos?: AtributosEquipoBiomedico | AtributosEquipoInformatico | AtributosCPU | AtributosMonitor | AtributosTeclado | AtributosMouse | AtributosImpresoraRed | AtributosTelefonoIp | AtributosCCTV | AtributosAccessPoint | AtributosLaboratorio | AtributosRayosImagen | null;
+    // ─── Campos del Acta de Ingreso (se heredan del acta al cerrarla) ───
+    idActa?: number;                         // referencia al acta que originó este activo
+    codigoBarras?: string;                   // formato [MóDULO]-[AÑO]-[SECUENCIAL]
+    tieneGarantia?: boolean;                 // heredado del encabezado del acta
+    fechaInicioGarantia?: Date | null;       // heredado del acta
+    fechaFinGarantia?: Date | null;          // heredado del acta
 }
 
 
@@ -346,9 +352,11 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     return copy;
                 };
 
-                const activosParsed = JSON.parse(activosGuardados).map((a: Activo) => ({
+                const activosParsed = JSON.parse(activosGuardados).map((a: any) => ({
                     ...a,
                     fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null,
+                    fechaInicioGarantia: a.fechaInicioGarantia ? new Date(a.fechaInicioGarantia) : null,
+                    fechaFinGarantia: a.fechaFinGarantia ? new Date(a.fechaFinGarantia) : null,
                     atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
                 setActivos(activosParsed);
