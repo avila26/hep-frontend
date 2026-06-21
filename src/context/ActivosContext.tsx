@@ -336,10 +336,7 @@ const generateCodigoInstitucional = (existingActivos: Activo[]): string => {
 };
 
 export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [activos, setActivos] = useState<Activo[]>([]);
-    const [cargasMasivas, setCargasMasivas] = useState<CargaMasivaLog[]>([]);
-
-    useEffect(() => {
+    const [activos, setActivos] = useState<Activo[]>(() => {
         const activosGuardados = localStorage.getItem('activos_hep');
         if (activosGuardados) {
             try {
@@ -352,32 +349,34 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     return copy;
                 };
 
-                const activosParsed = JSON.parse(activosGuardados).map((a: any) => ({
+                return JSON.parse(activosGuardados).map((a: any) => ({
                     ...a,
                     fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null,
                     fechaInicioGarantia: a.fechaInicioGarantia ? new Date(a.fechaInicioGarantia) : null,
                     fechaFinGarantia: a.fechaFinGarantia ? new Date(a.fechaFinGarantia) : null,
                     atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
-                setActivos(activosParsed);
             } catch (error) {
                 console.error('Error al cargar activos:', error);
             }
         }
+        return [];
+    });
 
+    const [cargasMasivas, setCargasMasivas] = useState<CargaMasivaLog[]>(() => {
         const cargasGuardadas = localStorage.getItem('cargas_masivas_hep');
         if (cargasGuardadas) {
             try {
-                const cargasParsed = JSON.parse(cargasGuardadas).map((carga: CargaMasivaLog) => ({
+                return JSON.parse(cargasGuardadas).map((carga: CargaMasivaLog) => ({
                     ...carga,
                     fechaCarga: new Date(carga.fechaCarga)
                 }));
-                setCargasMasivas(cargasParsed);
             } catch (error) {
                 console.error('Error al cargar historial de cargas masivas:', error);
             }
         }
-    }, []);
+        return [];
+    });
 
     useEffect(() => {
         localStorage.setItem('activos_hep', JSON.stringify(activos));

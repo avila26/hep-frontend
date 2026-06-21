@@ -15,10 +15,26 @@ import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext
 /* ------------------------------------------------------------------ */
 /*  Función formatDate Segura (Obligatoria sin excepciones)          */
 /* ------------------------------------------------------------------ */
+const safeParseDate = (d: Date | string | null | undefined): Date | null => {
+  if (!d) return null;
+  if (d instanceof Date) return d;
+  if (typeof d === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [year, month, day] = d.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    if (/^\d{4}\/\d{2}\/\d{2}$/.test(d)) {
+      const [year, month, day] = d.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    }
+  }
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const formatDate = (date: Date | string | undefined): string => {
-  if (!date) return 'Sin fecha';
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return 'Fecha inválida';
+  const d = safeParseDate(date);
+  if (!d) return 'Sin fecha';
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 };
 

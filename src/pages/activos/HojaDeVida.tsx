@@ -19,97 +19,8 @@ import {
 } from '../../context/ActivosContext';
 import { useTrasladosContext } from '../../context/TrasladosContext';
 import { useActas, calcularVigenciaGarantia } from '../../context/ActasContext';
-
-// Mocks locales para Mantenimientos (coherente con RF-MA-11, RF-MA-12, RF-MA-13)
-interface Mantenimiento {
-    id: string;
-    codigoActivo: string;
-    fecha: Date;
-    tipo: 'Preventivo' | 'Correctivo';
-    descripcion: string;
-    tecnico: string;
-    estado: 'Completado' | 'En proceso' | 'Pendiente';
-}
-
-const MOCK_MANTENIMIENTOS: Mantenimiento[] = [
-    {
-        id: 'm1',
-        codigoActivo: 'CI-2026-0001',
-        fecha: new Date(2026, 4, 10),
-        tipo: 'Preventivo',
-        descripcion: 'Calibración de sensores de flujo y presión, limpieza de filtros y validación de batería de respaldo.',
-        tecnico: 'Ing. Felipe Restrepo (Bioelectrónica S.A.)',
-        estado: 'Completado'
-    },
-    {
-        id: 'm2',
-        codigoActivo: 'CI-2026-0001',
-        fecha: new Date(2026, 5, 2),
-        tipo: 'Correctivo',
-        descripcion: 'Cambio de válvula espiratoria por reporte de alarmas falsas de presión alta.',
-        tecnico: 'Téc. Laura Méndez (Soporte Interno HEP)',
-        estado: 'Completado'
-    },
-    {
-        id: 'm3',
-        codigoActivo: 'CI-2026-0002',
-        fecha: new Date(2026, 3, 15),
-        tipo: 'Preventivo',
-        descripcion: 'Mantenimiento de rutina, limpieza interna, verificación de cables de derivación de ECG.',
-        tecnico: 'Ing. Carlos Ortega (Técnico TICs)',
-        estado: 'Completado'
-    },
-    {
-        id: 'm4',
-        codigoActivo: 'CI-2026-0003',
-        fecha: new Date(2026, 2, 28),
-        tipo: 'Correctivo',
-        descripcion: 'Reparación de la carcasa plástica por fisura tras caída accidental.',
-        tecnico: 'Téc. Laura Méndez (Soporte Interno HEP)',
-        estado: 'Completado'
-    }
-];
-
-// Mocks locales para Historial de Cambios de Estado
-interface CambioEstado {
-    id: string;
-    codigoActivo: string;
-    fecha: Date;
-    usuario: string;
-    estadoAnterior: string;
-    estadoNuevo: string;
-    motivo: string;
-}
-
-const MOCK_CAMBIOS_ESTADO: CambioEstado[] = [
-    {
-        id: 'c1',
-        codigoActivo: 'CI-2026-0001',
-        fecha: new Date(2026, 4, 8),
-        usuario: 'LIC. Lisbeth Mero Garcia',
-        estadoAnterior: 'Nuevo',
-        estadoNuevo: 'Bueno',
-        motivo: 'Puesta en marcha y asignación formal de custodio.'
-    },
-    {
-        id: 'c2',
-        codigoActivo: 'CI-2026-0001',
-        fecha: new Date(2026, 5, 1),
-        usuario: 'LIC. Lisbeth Mero Garcia',
-        estadoAnterior: 'Bueno',
-        estadoNuevo: 'Regular',
-        motivo: 'Reporte de desgaste en válvula espiratoria previo a mantenimiento correctivo.'
-    },
-    {
-        id: 'c3',
-        codigoActivo: 'CI-2026-0001',
-        fecha: new Date(2026, 5, 3),
-        usuario: 'LIC. Lisbeth Mero Garcia',
-        estadoAnterior: 'Regular',
-        estadoNuevo: 'Bueno',
-        motivo: 'Restablecimiento del estado tras completarse mantenimiento correctivo exitosamente.'
-    }
-];
+import { useMantenimientosContext } from '../../context/MantenimientosContext';
+import { useBajasContext } from '../../context/BajasContext';
 
 const ETIQUETAS_ESTADO: Record<string, string> = {
     BUE: 'Bueno',
@@ -189,6 +100,8 @@ export const HojaDeVida: React.FC = () => {
     const { activos } = useActivos();
     const { traslados } = useTrasladosContext();
     const { actas } = useActas();
+    const { mantenimientos } = useMantenimientosContext();
+    const { informes } = useBajasContext();
     const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
 
     const activo = useMemo(() => {
@@ -267,53 +180,74 @@ export const HojaDeVida: React.FC = () => {
             });
         });
 
-        // 3. Mantenimientos
-        const mantenimientosActivo = MOCK_MANTENIMIENTOS.filter(m => m.codigoActivo === activo.codigoInstitucional);
+        // 3. Mantenimientos (desde MantenimientosContext)
+        const mantenimientosActivo = (mantenimientos || []).filter(m => m.codigoActivo === activo.codigoInstitucional);
         mantenimientosActivo.forEach(m => {
+            const dateVal = m.fechaCierre ? new Date(m.fechaCierre + 'T00:00:00') : (m.fechaInicio ? new Date(m.fechaInicio + 'T00:00:00') : new Date(m.fechaRegistro));
             events.push({
                 id: `maint-${m.id}`,
-                fecha: new Date(m.fecha),
+                fecha: dateVal,
                 tipo: 'mantenimiento',
                 titulo: `Mantenimiento ${m.tipo}`,
-                detalleShort: `Acción técnica de tipo ${m.tipo.toLowerCase()} en estado: ${m.estado}.`,
+                detalleShort: `${m.descripcionTrabajo || 'Acción técnica de tipo ' + m.tipo.toLowerCase()}. Estado: ${m.estado}.`,
                 icon: m.tipo === 'Correctivo' ? 'pi pi-wrench' : 'pi pi-cog',
                 color: m.tipo === 'Correctivo' ? '#EF4444' : '#6366F1', // Red, Indigo
                 extraInfo: (
                     <div className="text-xs space-y-1.5 mt-3 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p><strong>Referencia:</strong> {m.referencia}</p>
                         <p><strong>Tipo:</strong> {m.tipo}</p>
-                        <p><strong>Descripción del Trabajo:</strong> {m.descripcion}</p>
-                        <p><strong>Responsable Técnico:</strong> {m.tecnico}</p>
-                        <p><strong>Estado final de tarea:</strong> {m.estado}</p>
+                        <p><strong>Estado:</strong> {m.estado}</p>
+                        <p><strong>Fecha Programada:</strong> {m.fechaProgramada || '—'}</p>
+                        {m.fechaInicio && <p><strong>Fecha de Inicio:</strong> {m.fechaInicio}</p>}
+                        {m.fechaCierre && <p><strong>Fecha de Cierre:</strong> {m.fechaCierre}</p>}
+                        <p><strong>Descripción del Trabajo:</strong> {m.descripcionTrabajo || '—'}</p>
+                        {m.diagnostico && <p><strong>Diagnóstico:</strong> {m.diagnostico}</p>}
+                        {m.repuestosUtilizados && <p><strong>Repuestos Utilizados:</strong> {m.repuestosUtilizados}</p>}
+                        <p><strong>Responsable Técnico:</strong> {m.responsableTecnico || '—'}</p>
+                        {m.observaciones && <p><strong>Observaciones:</strong> {m.observaciones}</p>}
                     </div>
                 )
             });
         });
 
-        // 4. Cambios de Estado
-        const cambiosEstadoActivo = MOCK_CAMBIOS_ESTADO.filter(c => c.codigoActivo === activo.codigoInstitucional);
-        cambiosEstadoActivo.forEach(c => {
+        // 4. Solicitudes de Baja (desde BajasContext)
+        const informesActivo = (informes || []).filter(inf => inf.bienes.some(b => b.codigoActivo === activo.codigoInstitucional));
+        informesActivo.forEach(inf => {
+            const dateVal = inf.fechaEgreso ? new Date(inf.fechaEgreso + 'T00:00:00') : (inf.fechaAprobacion ? new Date(inf.fechaAprobacion + 'T00:00:00') : new Date(inf.fechaRegistro));
             events.push({
-                id: `estado-${c.id}`,
-                fecha: new Date(c.fecha),
-                tipo: 'cambio_estado',
-                titulo: 'Cambio de Estado',
-                detalleShort: `Estado del bien actualizado de "${c.estadoAnterior}" a "${c.estadoNuevo}".`,
-                icon: 'pi pi-refresh',
-                color: '#8B5CF6', // Purple
+                id: `baja-${inf.id}`,
+                fecha: dateVal,
+                tipo: 'egreso',
+                titulo: `Solicitud de Baja - Ref: ${inf.referencia}`,
+                detalleShort: `Informe técnico de baja en estado: ${inf.estado}.`,
+                icon: inf.estado === 'Egresado' ? 'pi pi-ban' : 'pi pi-file',
+                color: inf.estado === 'Egresado' ? '#6B7280' : '#8B5CF6', // Gray (Egresado), Purple
                 extraInfo: (
                     <div className="text-xs space-y-1.5 mt-3 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                        <p><strong>Estado Anterior:</strong> {c.estadoAnterior}</p>
-                        <p><strong>Estado Nuevo:</strong> {c.estadoNuevo}</p>
-                        <p><strong>Motivo del Cambio:</strong> {c.motivo}</p>
-                        <p><strong>Registrado por:</strong> {c.usuario}</p>
+                        <p><strong>Referencia de Informe:</strong> {inf.referencia}</p>
+                        <p><strong>Estado:</strong> {inf.estado}</p>
+                        <p><strong>Elaborado por:</strong> {inf.elaboradoPor} ({inf.tipoSolicitante})</p>
+                        <p><strong>Fecha Elaboración:</strong> {inf.fechaElaboracion}</p>
+                        <p><strong>Antecedentes:</strong> {inf.antecedentes}</p>
+                        <p><strong>Justificación Técnica:</strong> {inf.justificacionTecnica}</p>
+                        <p><strong>Recomendación:</strong> {inf.recomendacion}</p>
+                        {inf.fechaRevision && <p><strong>Revisado por:</strong> {inf.revisadoPor} el {inf.fechaRevision}</p>}
+                        {inf.fechaAprobacion && <p><strong>Aprobado por:</strong> {inf.aprobadoPor} el {inf.fechaAprobacion}</p>}
+                        {inf.fechaEgreso && (
+                            <>
+                                <p><strong>Fecha Egreso:</strong> {inf.fechaEgreso}</p>
+                                <p><strong>Motivo Egreso:</strong> {inf.motivoEgreso}</p>
+                                <p><strong>Registrado por:</strong> {inf.registradoPorEgreso}</p>
+                            </>
+                        )}
                     </div>
                 )
             });
         });
 
-        // 5. Egreso de Bien (Bajas / Egresos)
+        // 5. Egreso de Bien (Bajas / Egresos generales si no hay informe específico)
         const estadoNorm = normalizarEstadoActivo(activo.estadoActivo);
-        if (estadoNorm === 'BAJ' || estadoNorm === 'EGR') {
+        if ((estadoNorm === 'BAJ' || estadoNorm === 'EGR') && !informesActivo.some(inf => inf.estado === 'Egresado')) {
             events.push({
                 id: 'egreso-final',
                 fecha: activo.fechaDNS ? new Date(activo.fechaDNS) : new Date(),
@@ -334,7 +268,7 @@ export const HojaDeVida: React.FC = () => {
 
         // Ordenar descendentemente por fecha
         return events.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
-    }, [activo]);
+    }, [activo, traslados, mantenimientos, informes]);
 
     if (!activo) {
         return (

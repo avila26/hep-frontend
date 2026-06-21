@@ -12,10 +12,26 @@ import { useTrasladosContext, TrasladoHEP } from '../../context/TrasladosContext
 /* ------------------------------------------------------------------ */
 /*  Utilidad de Formato de Fecha                                     */
 /* ------------------------------------------------------------------ */
+const safeParseDate = (d: Date | string | null | undefined): Date | null => {
+    if (!d) return null;
+    if (d instanceof Date) return d;
+    if (typeof d === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            const [year, month, day] = d.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        if (/^\d{4}\/\d{2}\/\d{2}$/.test(d)) {
+            const [year, month, day] = d.split('/').map(Number);
+            return new Date(year, month - 1, day);
+        }
+    }
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const formatDate = (d: Date | string | null | undefined): string => {
-    if (!d) return '—';
-    const date = d instanceof Date ? d : new Date(d);
-    if (isNaN(date.getTime())) return '—';
+    const date = safeParseDate(d);
+    if (!date) return '—';
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();

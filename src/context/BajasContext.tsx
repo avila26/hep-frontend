@@ -388,7 +388,8 @@ export const BajasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setInformes(prev =>
       prev.map(inf => {
         if (inf.id === id) {
-          const hoy = new Date().toISOString().split('T')[0];
+          const now = new Date();
+          const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const nuevoHistorial = [
             ...inf.historialRevisiones,
             {
@@ -417,7 +418,8 @@ export const BajasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setInformes(prev =>
       prev.map(inf => {
         if (inf.id === id) {
-          const hoy = new Date().toISOString().split('T')[0];
+          const now = new Date();
+          const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const nuevoHistorial = [
             ...inf.historialRevisiones,
             {
@@ -480,7 +482,8 @@ export const BajasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setInformes(prev =>
       prev.map(inf => {
         if (inf.id === id && inf.estado === 'Procesado') {
-          const hoy = new Date().toISOString().split('T')[0];
+          const now = new Date();
+          const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           return {
             ...inf,
             estado: 'Egresado',

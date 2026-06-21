@@ -31,6 +31,19 @@ export const AppTopbar: React.FC = () => {
 
                 <div className="layout-topbar-menu hidden lg:block">
                     <div className="layout-topbar-menu-content">
+                        <button 
+                            type="button" 
+                            className="layout-topbar-action"
+                            onClick={() => {
+                                if (window.confirm('¿Estás seguro de que deseas limpiar todo el LocalStorage? Esto borrará todos los activos, traslados, mantenimientos y configuraciones, restableciendo la aplicación.')) {
+                                    localStorage.clear();
+                                    window.location.reload();
+                                }
+                            }}
+                        >
+                            <i className="pi pi-trash" style={{ color: '#ef4444' }}></i>
+                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Limpiar Datos</span>
+                        </button>
                         <button type="button" className="layout-topbar-action">
                             <i className="pi pi-user"></i>
                             <span>Perfil</span>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useActivos } from './ActivosContext';
 
 /* ------------------------------------------------------------------ */
 /*  Interfaz Principal                                                */
@@ -23,120 +24,8 @@ export interface TrasladoHEP {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Datos Mock Iniciales                                              */
+/*  Datos Mock Iniciales - Removidos                                 */
 /* ------------------------------------------------------------------ */
-const MOCK_TRASLADOS_INICIALES: TrasladoHEP[] = [
-  // 3 Pendientes
-  {
-    id: 'tr-mock-1',
-    codigoActivo: 'ACT-0001',
-    nombreActivo: 'Ventilador Mecánico',
-    categoria: 'Equipos Médicos',
-    ubicacionOrigen: 'UCI',
-    ubicacionDestino: 'Quirófano A',
-    responsableAnterior: 'Ing. Carlos Ortega',
-    nuevoResponsable: 'Dra. Elena Larrea',
-    fechaTraslado: '2026-06-20',
-    fechaEjecucion: '',
-    motivo: 'Reasignación por aumento de demanda',
-    observaciones: 'Requiere revisión técnica previa al traslado.',
-    estado: 'Pendiente',
-    ejecutadoPor: '',
-    referencia: 'TR-2026-0001',
-    fechaRegistro: '2026-06-15T08:00:00.000Z'
-  },
-  {
-    id: 'tr-mock-2',
-    codigoActivo: 'ACT-0002',
-    nombreActivo: 'Monitor de Signos Vitales',
-    categoria: 'Equipos de Monitoreo',
-    ubicacionOrigen: 'Quirófano B',
-    ubicacionDestino: 'UCI',
-    responsableAnterior: 'Lic. María Gómez',
-    nuevoResponsable: 'Dr. Juan Pérez',
-    fechaTraslado: '2026-06-22',
-    fechaEjecucion: '',
-    motivo: 'Apoyo temporal para pacientes críticos',
-    observaciones: '',
-    estado: 'Pendiente',
-    ejecutadoPor: '',
-    referencia: 'TR-2026-0002',
-    fechaRegistro: '2026-06-15T09:30:00.000Z'
-  },
-  {
-    id: 'tr-mock-3',
-    codigoActivo: 'ACT-0003',
-    nombreActivo: 'Bomba de Infusión',
-    categoria: 'Equipos Médicos',
-    ubicacionOrigen: 'Hospitalización - Piso 1',
-    ubicacionDestino: 'Consulta Externa',
-    responsableAnterior: 'Mgs. Belén Villao',
-    nuevoResponsable: 'LIC. Lisbeth Mero Garcia',
-    fechaTraslado: '2026-07-02',
-    fechaEjecucion: '',
-    motivo: 'Reposicionamiento para campaña de vacunación',
-    observaciones: 'Traslado por 15 días.',
-    estado: 'Pendiente',
-    ejecutadoPor: '',
-    referencia: 'TR-2026-0003',
-    fechaRegistro: '2026-06-15T11:45:00.000Z'
-  },
-  // 3 Ejecutados
-  {
-    id: 'tr-mock-4',
-    codigoActivo: 'ACT-0010',
-    nombreActivo: 'Desfibrilador Cardiaco',
-    categoria: 'Equipos Médicos',
-    ubicacionOrigen: 'Emergencias',
-    ubicacionDestino: 'UCI',
-    responsableAnterior: 'Dr. Luis Molina',
-    nuevoResponsable: 'Dra. Ana Torres',
-    fechaTraslado: '2026-05-10',
-    fechaEjecucion: '2026-05-12',
-    motivo: 'Requerimiento urgente por incremento de pacientes en UCI',
-    observaciones: 'Se entrega calibrado y con accesorios completos.',
-    estado: 'Ejecutado',
-    ejecutadoPor: 'Carlos Mendoza',
-    referencia: 'TR-2026-0004',
-    fechaRegistro: '2026-05-09T14:20:00.000Z'
-  },
-  {
-    id: 'tr-mock-5',
-    codigoActivo: 'ACT-0025',
-    nombreActivo: 'Electrocardiógrafo 12 Canales',
-    categoria: 'Equipos Médicos',
-    ubicacionOrigen: 'Consulta Externa',
-    ubicacionDestino: 'Cardiología',
-    responsableAnterior: 'Lic. Rosa Méndez',
-    nuevoResponsable: 'Dr. Héctor Salas',
-    fechaTraslado: '2026-05-15',
-    fechaEjecucion: '2026-05-15',
-    motivo: 'Traslado a unidad especializada de cardiología',
-    observaciones: '',
-    estado: 'Ejecutado',
-    ejecutadoPor: 'Carlos Mendoza',
-    referencia: 'TR-2026-0005',
-    fechaRegistro: '2026-05-15T10:00:00.000Z'
-  },
-  {
-    id: 'tr-mock-6',
-    codigoActivo: 'ACT-0042',
-    nombreActivo: 'Monitor de Signos Vitales',
-    categoria: 'Equipos de Monitoreo',
-    ubicacionOrigen: 'UCI',
-    ubicacionDestino: 'Quirófano A',
-    responsableAnterior: 'Dr. Carlos Ruiz',
-    nuevoResponsable: 'Dra. Elena Larrea',
-    fechaTraslado: '2026-05-20',
-    fechaEjecucion: '2026-05-21',
-    motivo: 'Reemplazo temporal por mantenimiento correctivo',
-    observaciones: 'Préstamo provisional hasta el fin de semana.',
-    estado: 'Ejecutado',
-    ejecutadoPor: 'Sofía Ponce',
-    referencia: 'TR-2026-0006',
-    fechaRegistro: '2026-05-20T16:15:00.000Z'
-  }
-];
 
 /* ------------------------------------------------------------------ */
 /*  Tipado del Contexto                                               */
@@ -156,18 +45,19 @@ const TrasladosContext = createContext<TrasladosContextType | undefined>(undefin
 /*  Provider del Contexto                                             */
 /* ------------------------------------------------------------------ */
 export const TrasladosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { activos, actualizarActivo } = useActivos();
   const [traslados, setTraslados] = useState<TrasladoHEP[]>(() => {
     const stored = localStorage.getItem('traslados_hep');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed.filter((t: any) => !t.id?.startsWith('tr-mock-')) : [];
       } catch (error) {
         console.error('Error al inicializar traslados_hep desde localStorage:', error);
       }
     }
-    // Si no hay datos, inicializamos con los mock y persistimos
-    localStorage.setItem('traslados_hep', JSON.stringify(MOCK_TRASLADOS_INICIALES));
-    return MOCK_TRASLADOS_INICIALES;
+    // Si no hay datos, inicializamos vacío
+    return [];
   });
 
   // Guardar en localStorage cuando cambie el array de traslados
@@ -175,14 +65,19 @@ export const TrasladosProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem('traslados_hep', JSON.stringify(traslados));
   }, [traslados]);
 
+  // Filtrar traslados para asegurar que el activo referenciado existe en ActivosContext
+  const trasladosFiltrados = useMemo(() => {
+    return traslados.filter(t => activos.some(a => a.codigoInstitucional === t.codigoActivo));
+  }, [traslados, activos]);
+
   // Filtrado de pendientes y ejecutados con useMemo
   const pendientes = useMemo(() => {
-    return traslados.filter(t => t.estado === 'Pendiente');
-  }, [traslados]);
+    return trasladosFiltrados.filter(t => t.estado === 'Pendiente');
+  }, [trasladosFiltrados]);
 
   const ejecutados = useMemo(() => {
-    return traslados.filter(t => t.estado === 'Ejecutado');
-  }, [traslados]);
+    return trasladosFiltrados.filter(t => t.estado === 'Ejecutado');
+  }, [trasladosFiltrados]);
 
   // Agregar un nuevo traslado
   const agregarTraslado = (data: Omit<TrasladoHEP, 'id' | 'referencia' | 'fechaRegistro' | 'estado' | 'fechaEjecucion' | 'ejecutadoPor'>) => {
@@ -220,10 +115,21 @@ export const TrasladosProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const ejecutarTraslado = (id: string, ejecutadoPor: string) => {
     setTraslados(prev => prev.map(t => {
       if (t.id === id) {
+        // También actualizamos la ubicación y custodio del activo en el ActivosContext
+        const asset = activos.find(a => a.codigoInstitucional === t.codigoActivo);
+        if (asset) {
+          actualizarActivo({
+            ...asset,
+            ubicacion: t.ubicacionDestino,
+            responsableEntrega: t.nuevoResponsable
+          });
+        }
+        const now = new Date();
+        const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         return {
           ...t,
           estado: 'Ejecutado',
-          fechaEjecucion: new Date().toISOString().split('T')[0], // formato ISO 'YYYY-MM-DD'
+          fechaEjecucion: localDateStr,
           ejecutadoPor
         };
       }
@@ -233,12 +139,12 @@ export const TrasladosProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Obtener traslado por ID
   const obtenerPorId = (id: string): TrasladoHEP | undefined => {
-    return traslados.find(t => t.id === id);
+    return trasladosFiltrados.find(t => t.id === id);
   };
 
   return (
     <TrasladosContext.Provider value={{
-      traslados,
+      traslados: trasladosFiltrados,
       pendientes,
       ejecutados,
       agregarTraslado,

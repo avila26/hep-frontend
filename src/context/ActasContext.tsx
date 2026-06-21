@@ -154,20 +154,17 @@ const parseDatesActa = (raw: any): ActaIngreso => ({
 const ActasContext = createContext<ActasContextType | undefined>(undefined);
 
 export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [actas, setActas] = useState<ActaIngreso[]>([]);
-
-    // Carga inicial desde localStorage
-    useEffect(() => {
+    const [actas, setActas] = useState<ActaIngreso[]>(() => {
         const stored = localStorage.getItem('actas_ingreso_hep');
         if (stored) {
             try {
-                const parsed: ActaIngreso[] = JSON.parse(stored).map(parseDatesActa);
-                setActas(parsed);
+                return JSON.parse(stored).map(parseDatesActa);
             } catch (e) {
                 console.error('Error al cargar actas de ingreso:', e);
             }
         }
-    }, []);
+        return [];
+    });
 
     // Persistencia automática
     useEffect(() => {

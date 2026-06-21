@@ -311,13 +311,15 @@ export const MantenimientosProvider: React.FC<{ children: React.ReactNode }> = (
 
   // Iniciar mantenimiento
   const iniciarMantenimiento = (id: string) => {
+    const now = new Date();
+    const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     setMantenimientos(prev =>
       prev.map(m => {
         if (m.id === id) {
           return {
             ...m,
             estado: 'En Proceso',
-            fechaInicio: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
+            fechaInicio: localDateStr // Formato YYYY-MM-DD
           };
         }
         return m;
@@ -332,13 +334,15 @@ export const MantenimientosProvider: React.FC<{ children: React.ReactNode }> = (
     repuestosUtilizados: string,
     observacionesCierre: string
   ) => {
+    const now = new Date();
+    const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     setMantenimientos(prev =>
       prev.map(m => {
         if (m.id === id) {
           return {
             ...m,
             estado: 'Cerrado',
-            fechaCierre: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
+            fechaCierre: localDateStr, // Formato YYYY-MM-DD
             descripcionTrabajo: descripcionCierre,
             repuestosUtilizados: repuestosUtilizados,
             observaciones: observacionesCierre

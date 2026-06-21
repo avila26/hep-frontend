@@ -562,6 +562,12 @@ export const RegistrarActivo: React.FC = () => {
                         </div>
 
                         <div>
+                            <label className="block text-sm font-medium mb-2">Categoría <span className="text-red-500">*</span></label>
+                            <Dropdown value={formData.categoriaActivo} onChange={(e: DropdownChangeEvent) => handleInputChange('categoriaActivo', e.value)} options={CATALOGOS.categoriaActivo} placeholder="Seleccione una categoría" className={`w-full ${getErrorClass('categoriaActivo')}`} disabled={categoriaBloqueada} />
+                            {errors.categoriaActivo && <small className="text-red-500">{errors.categoriaActivo}</small>}
+                        </div>
+
+                        <div>
                             <label className="block text-sm font-medium mb-2">Marca <span className="text-red-500">*</span></label>
                             <Dropdown value={formData.marca} onChange={(e: DropdownChangeEvent) => handleInputChange('marca', e.value)} options={marcaOptions} placeholder="Seleccione una marca" className={`w-full ${getErrorClass('marca')}`} />
                             {errors.marca && <small className="text-red-500">{errors.marca}</small>}
@@ -643,11 +649,6 @@ export const RegistrarActivo: React.FC = () => {
                         Clasificación
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Categoría <span className="text-red-500">*</span></label>
-                            <Dropdown value={formData.categoriaActivo} onChange={(e: DropdownChangeEvent) => handleInputChange('categoriaActivo', e.value)} options={CATALOGOS.categoriaActivo} placeholder="Seleccione una categoría" className={`w-full ${getErrorClass('categoriaActivo')}`} disabled={categoriaBloqueada} />
-                            {errors.categoriaActivo && <small className="text-red-500">{errors.categoriaActivo}</small>}
-                        </div>
                         <div>
                             <label className="block text-sm font-medium mb-2">Origen de Ingreso <span className="text-red-500">*</span></label>
                             <Dropdown value={formData.origenIngreso} onChange={(e: DropdownChangeEvent) => handleInputChange('origenIngreso', e.value)} options={CATALOGOS.origenIngreso} placeholder="Seleccione origen" className={`w-full ${getErrorClass('origenIngreso')}`} />
