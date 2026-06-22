@@ -13,6 +13,8 @@ export interface SerieActa {
     codigoSBYE?: string;
     ubicacion?: string;
     responsableEntrega?: string;
+    codigoInstitucional?: string;
+    documentoRespaldo?: string;
 }
 
 /** Nivel 2 — Un grupo de activos del mismo tipo dentro del acta */
@@ -37,13 +39,14 @@ export interface LineaActa {
     condicionDepreciacion: 'Lineal' | 'Acelerada' | 'No aplica';
     tiempoVidaUtil?: number | null;
     atributosEspecificos?: any;
+    codigoSBYE?: string;
 }
 
 /** Nivel 1 — Encabezado del acta, contenedor de todas las líneas */
 export interface ActaIngreso {
     idActa: number;
     referencia: string;            // ACTA-2025-0001
-    tipoIngreso: 'Orden de compra' | 'Memorando de ingreso' | 'Migración inicial';
+    tipoIngreso: 'Orden de compra' | 'Memorando de ingreso' | 'Acta de Entrega-Recepción' | 'Contrato' | 'Migración inicial';
     numeroOrdenMemorandum: string;
     empresaProveedora: string;
     administradorOrdenCompra?: string; // solo si tipo = "Orden de compra"
@@ -53,6 +56,7 @@ export interface ActaIngreso {
     fechaFinGarantia?: Date | null;
     fechaIngreso: Date;
     tecnicoReceptor: string;
+    responsableEntrega?: string;
     observacionGeneral?: string;
     estado: 'Borrador' | 'Cerrada';
     lineas: LineaActa[];
@@ -64,6 +68,17 @@ export interface ActaIngreso {
     valorUnitario?: number | null;
     fechaDNS?: Date | null;
     bloqueado: boolean;
+    
+    // Campos condicionales adicionales
+    fechaMemorando?: Date | null;
+    remitenteOrigen?: string;
+    asuntoMemorando?: string;
+    fechaActa?: Date | null;
+    funcionarioReceptor?: string;
+    funcionarioEntregador?: string;
+    fechaSuscripcion?: Date | null;
+    fechaVigencia?: Date | null;
+    administradorContrato?: string;
 }
 
 // ─── Tipos del contexto ────────────────────────────────────────────────────────
@@ -79,7 +94,7 @@ interface ActasContextType {
     actualizarActa: (acta: ActaIngreso) => void;
     eliminarActa: (idActa: number) => void;
     cerrarActa: (
-        idActa: number,
+        actaParaCerrar: ActaIngreso,
         seriesExistentesEnSistema: Set<string>,
         generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[]
     ) => { success: boolean; errores: string[]; activosCreados?: Activo[] };
@@ -146,7 +161,11 @@ const parseDatesActa = (raw: any): ActaIngreso => ({
     fechaOrdenCompra: raw.fechaOrdenCompra ? new Date(raw.fechaOrdenCompra) : null,
     fechaInicioGarantia: raw.fechaInicioGarantia ? new Date(raw.fechaInicioGarantia) : null,
     fechaFinGarantia: raw.fechaFinGarantia ? new Date(raw.fechaFinGarantia) : null,
-    fechaDNS: raw.fechaDNS ? new Date(raw.fechaDNS) : null
+    fechaDNS: raw.fechaDNS ? new Date(raw.fechaDNS) : null,
+    fechaMemorando: raw.fechaMemorando ? new Date(raw.fechaMemorando) : null,
+    fechaActa: raw.fechaActa ? new Date(raw.fechaActa) : null,
+    fechaSuscripcion: raw.fechaSuscripcion ? new Date(raw.fechaSuscripcion) : null,
+    fechaVigencia: raw.fechaVigencia ? new Date(raw.fechaVigencia) : null
 });
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -191,20 +210,49 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const cerrarActa = (
-        idActa: number,
+        actaParaCerrar: ActaIngreso,
         seriesExistentesEnSistema: Set<string>,
         generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[]
     ): { success: boolean; errores: string[]; activosCreados?: Activo[] } => {
-        const acta = actas.find(a => a.idActa === idActa);
-        if (!acta) return { success: false, errores: ['Acta no encontrada'] };
+        const acta = { ...actaParaCerrar };
+        if (!acta.idActa) {
+            acta.idActa = actas.length > 0 ? Math.max(...actas.map(a => a.idActa)) + 1 : 1;
+            acta.referencia = generateReferenciaActa(actas);
+            acta.estado = 'Borrador';
+        }
         if (acta.estado === 'Cerrada') return { success: false, errores: ['El acta ya está cerrada'] };
 
         const errores: string[] = [];
-
         // ── Validaciones de encabezado ──
-        if (!acta.numeroOrdenMemorandum.trim()) errores.push('El N.º de orden/memorando es obligatorio');
-        if (!acta.empresaProveedora.trim()) errores.push('La empresa proveedora es obligatoria');
-        if (!acta.tecnicoReceptor.trim()) errores.push('El técnico receptor es obligatorio');
+        const labelDoc =
+            acta.tipoIngreso === 'Orden de compra' ? 'N.º de Orden de Compra' :
+            acta.tipoIngreso === 'Memorando de ingreso' ? 'N.º de Memorando' :
+            acta.tipoIngreso === 'Acta de Entrega-Recepción' ? 'N.º de Acta' :
+            acta.tipoIngreso === 'Contrato' ? 'N.º de Contrato' : 'N.º de orden/memorando';
+
+        if (!acta.numeroOrdenMemorandum?.trim()) {
+            errores.push(`El ${labelDoc} es obligatorio`);
+        }
+
+        if (acta.tipoIngreso === 'Orden de compra') {
+            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora es obligatoria');
+        } else if (acta.tipoIngreso === 'Memorando de ingreso') {
+            if (!acta.fechaMemorando) errores.push('La fecha del memorando es obligatoria');
+            if (!acta.remitenteOrigen?.trim()) errores.push('El remitente / unidad u institución de origen es obligatorio');
+        } else if (acta.tipoIngreso === 'Acta de Entrega-Recepción') {
+            if (!acta.fechaActa) errores.push('La fecha del acta es obligatoria');
+            if (!acta.funcionarioReceptor?.trim()) errores.push('El funcionario receptor es obligatorio');
+            if (!acta.funcionarioEntregador?.trim()) errores.push('El funcionario entregador es obligatorio');
+            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora / institución es obligatoria');
+        } else if (acta.tipoIngreso === 'Contrato') {
+            if (!acta.fechaSuscripcion) errores.push('La fecha de suscripción es obligatoria');
+            if (!acta.administradorContrato?.trim()) errores.push('El administrador del contrato es obligatorio');
+            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora es obligatoria');
+        }
+
+        if (!acta.tecnicoReceptor?.trim()) errores.push('El técnico receptor es obligatorio');
+        if (!acta.responsableEntrega?.trim()) errores.push('El responsable de entrega es obligatorio');
+
         if (acta.tieneGarantia) {
             if (!acta.fechaInicioGarantia) errores.push('Falta la fecha de inicio de garantía');
             if (!acta.fechaFinGarantia) errores.push('Falta la fecha fin de garantía');
@@ -224,13 +272,22 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         acta.lineas.forEach((linea, idx) => {
             const n = idx + 1;
             if (linea.series.length === 0) {
-                errores.push(`Línea ${n} (${linea.tipoActivo}): sin series registradas`);
+                errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}): sin series registradas`);
             } else if (linea.series.length !== linea.cantidadDeclarada) {
-                errores.push(`Línea ${n} (${linea.tipoActivo}): declara ${linea.cantidadDeclarada} unidad${linea.cantidadDeclarada !== 1 ? 'es' : ''} pero tiene ${linea.series.length} serie${linea.series.length !== 1 ? 's' : ''}`);
+                errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}): declara ${linea.cantidadDeclarada} unidad${linea.cantidadDeclarada !== 1 ? 'es' : ''} pero tiene ${linea.series.length} serie${linea.series.length !== 1 ? 's' : ''}`);
             }
-            linea.series.forEach(s => {
-                if (seriesExistentesEnSistema.has(s.numeroSerie)) {
+            linea.series.forEach((s, sIdx) => {
+                const serieDesc = s.numeroSerie?.trim() ? `"${s.numeroSerie}"` : `#${sIdx + 1}`;
+                if (!s.numeroSerie?.trim()) {
+                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie #${sIdx + 1}: falta el número de serie`);
+                } else if (seriesExistentesEnSistema.has(s.numeroSerie)) {
                     errores.push(`Serie "${s.numeroSerie}" (Línea ${n}): ya existe en el sistema`);
+                }
+                if (!s.codigoSBYE?.trim()) {
+                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: falta definir el Código SBYE`);
+                }
+                if (!s.ubicacion?.trim()) {
+                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la ubicación no está asignada`);
                 }
             });
         });
@@ -252,14 +309,14 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     codigosUsados.push(cb);
 
                     activosACrear.push({
-                        codigoInstitucional: cb,
+                        codigoInstitucional: serie.codigoInstitucional || cb,
                         nombre: linea.tipoActivo,
                         numeroSerie: serie.numeroSerie,
                         descripcion: linea.descripcion || linea.especificacionesTecnicas || '',
                         modelo: linea.modelo,
                         material: linea.material || '',
                         fechaAdquisicion: acta.fechaIngreso,
-                        responsableEntrega: serie.responsableEntrega || acta.tecnicoReceptor,
+                        responsableEntrega: acta.responsableEntrega || acta.tecnicoReceptor,
                         dimension: linea.dimension || '',
                         numeroContrato: acta.numeroContrato || '',
                         valorAdquisicion: acta.valorAdquisicionTotal ?? null,
@@ -269,7 +326,9 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         fechaDNS: acta.fechaDNS ? new Date(acta.fechaDNS).toISOString() : '',
                         tiempoVidaUtil: linea.tiempoVidaUtil ?? null,
                         bloqueado: acta.bloqueado || false,
-                        administradorDelProceso: acta.administradorOrdenCompra || '',
+                        administradorDelProceso: 
+                            acta.tipoIngreso === 'Orden de compra' ? (acta.administradorOrdenCompra || '') :
+                            acta.tipoIngreso === 'Contrato' ? (acta.administradorContrato || '') : '',
                         itemPresupuestario: acta.itemPresupuestario || '',
                         partidaPresupuestaria: acta.partidaPresupuestaria || '',
                         numeroActa: acta.referencia,
@@ -300,7 +359,14 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         actaActualizada.estado = 'Cerrada';
         actaActualizada.activosGenerados = activosCreados.map(a => a.idActivo);
 
-        setActas(prev => prev.map(a => a.idActa === idActa ? actaActualizada : a));
+        setActas(prev => {
+            const existe = prev.some(a => a.idActa === actaActualizada.idActa);
+            if (existe) {
+                return prev.map(a => a.idActa === actaActualizada.idActa ? actaActualizada : a);
+            } else {
+                return [...prev, actaActualizada];
+            }
+        });
         return { success: true, errores: [], activosCreados };
     };
 

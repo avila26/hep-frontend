@@ -417,11 +417,21 @@ export const HojaDeVida: React.FC = () => {
                             {[
                                 { label: 'Referencia', value: acta.referencia },
                                 { label: 'Tipo de ingreso', value: acta.tipoIngreso },
-                                { label: 'Empresa proveedora', value: acta.empresaProveedora },
-                                { label: 'N.º Orden / Memo', value: acta.numeroOrdenMemorandum },
+                                { 
+                                    label: acta.tipoIngreso === 'Acta de Entrega-Recepción' ? 'Empresa proveedora / Institución' : 'Empresa proveedora', 
+                                    value: acta.tipoIngreso === 'Memorando de ingreso' ? '' : acta.empresaProveedora 
+                                },
+                                { 
+                                    label: 
+                                        acta.tipoIngreso === 'Orden de compra' ? 'N.º de Orden de Compra' :
+                                        acta.tipoIngreso === 'Memorando de ingreso' ? 'N.º de Memorando' :
+                                        acta.tipoIngreso === 'Acta de Entrega-Recepción' ? 'N.º de Acta' :
+                                        acta.tipoIngreso === 'Contrato' ? 'N.º de Contrato' : 'N.º Orden / Memo',
+                                    value: acta.numeroOrdenMemorandum 
+                                },
                                 { label: 'Técnico receptor', value: acta.tecnicoReceptor },
                                 { label: 'Fecha de ingreso', value: formatDate(acta.fechaIngreso) },
-                            ].map(item => (
+                            ].filter(item => item.label && (item.value !== '' && item.value !== undefined)).map(item => (
                                 <div key={item.label} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 rounded p-2">
                                     <div className="text-xs text-amber-700 dark:text-amber-400 uppercase font-semibold mb-1">{item.label}</div>
                                     <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.value || '—'}</div>

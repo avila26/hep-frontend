@@ -771,13 +771,19 @@ export const RegistrarActivo: React.FC = () => {
                 modal
                 onHide={() => {
                     setShowBarcodeDialog(false);
-                    navigate('/activos/consultar');
+                    setCreadoActivo(null);
+                    setFormData(prev => ({
+                        ...prev,
+                        numeroSerie: '',
+                        codigoSBYE: '',
+                        codigoInstitucional: ''
+                    }));
                 }}
             >
                 {creadoActivo && (
                     <div className="flex flex-col items-center gap-4 py-4">
                         <i className="pi pi-check-circle text-5xl text-green-500" />
-                        <p className="text-center text-slate-700 dark:text-slate-300 m-0">
+                        <p className="text-center text-slate-700 dark:text-slate-350 m-0">
                             El activo <strong>{creadoActivo.nombre}</strong> fue registrado con el código institucional:
                         </p>
                         <p className="text-2xl font-bold text-blue-600 tracking-widest">{creadoActivo.codigoInstitucional}</p>
@@ -814,12 +820,30 @@ export const RegistrarActivo: React.FC = () => {
                             condicionDepreciacion: creadoActivo.condicionDepreciacion,
                             ubicacion: creadoActivo.ubicacion
                         }} />
-                        <Button
-                            label="Ir a Consultar Activos"
-                            icon="pi pi-arrow-right"
-                            onClick={() => { setShowBarcodeDialog(false); navigate('/activos/consultar'); }}
-                            className="w-full mt-2"
-                        />
+                        <div className="flex gap-2 w-full mt-2">
+                            <Button
+                                label="Registrar otro activo"
+                                icon="pi pi-plus"
+                                onClick={() => {
+                                    setShowBarcodeDialog(false);
+                                    setCreadoActivo(null);
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        numeroSerie: '',
+                                        codigoSBYE: '',
+                                        codigoInstitucional: ''
+                                    }));
+                                }}
+                                className="flex-1 p-button-success"
+                            />
+                            <Button
+                                label="Ir a Consultar Activos"
+                                icon="pi pi-arrow-right"
+                                severity="secondary"
+                                onClick={() => { setShowBarcodeDialog(false); navigate('/activos/consultar'); }}
+                                className="flex-1"
+                            />
+                        </div>
                     </div>
                 )}
             </Dialog>

@@ -83,7 +83,7 @@ const ConsultarActas: React.FC = () => {
             }
             if (globalFilter.trim()) {
                 const q = globalFilter.toLowerCase().trim();
-                const campos = [a.referencia, a.empresaProveedora, a.numeroOrdenMemorandum, a.tecnicoReceptor];
+                const campos = [a.referencia, a.empresaProveedora, a.numeroOrdenMemorandum, a.tecnicoReceptor, a.responsableEntrega];
                 if (!campos.some(c => c && c.toLowerCase().includes(q))) return false;
             }
             return true;
@@ -115,7 +115,7 @@ const ConsultarActas: React.FC = () => {
             acceptLabel: 'Sí, cerrar acta',
             acceptClassName: 'p-button-success',
             accept: () => {
-                const result = cerrarActa(acta.idActa, seriesExistentesEnSistema, agregarActivos);
+                const result = cerrarActa(acta, seriesExistentesEnSistema, agregarActivos);
                 if (!result.success) {
                     toast.current?.show({
                         severity: 'error',
@@ -192,6 +192,8 @@ const ConsultarActas: React.FC = () => {
                         { label: 'Todos los tipos', value: null },
                         { label: 'Orden de compra', value: 'Orden de compra' },
                         { label: 'Memorando', value: 'Memorando de ingreso' },
+                        { label: 'Acta de Entrega-Recepción', value: 'Acta de Entrega-Recepción' },
+                        { label: 'Contrato', value: 'Contrato' },
                         { label: 'Migración inicial', value: 'Migración inicial' }
                     ]}
                     onChange={e => setFiltroTipo(e.value)}
@@ -241,12 +243,23 @@ const ConsultarActas: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                         {[
                             { label: 'Tipo de ingreso', value: detalle.tipoIngreso },
-                            { label: 'N.º Orden / Memorando', value: detalle.numeroOrdenMemorandum },
-                            { label: 'Empresa proveedora', value: detalle.empresaProveedora },
+                            {
+                                label: 
+                                    detalle.tipoIngreso === 'Orden de compra' ? 'N.º de Orden de Compra' :
+                                    detalle.tipoIngreso === 'Memorando de ingreso' ? 'N.º de Memorando' :
+                                    detalle.tipoIngreso === 'Acta de Entrega-Recepción' ? 'N.º de Acta' :
+                                    detalle.tipoIngreso === 'Contrato' ? 'N.º de Contrato' : 'N.º Orden / Memorando',
+                                value: detalle.numeroOrdenMemorandum
+                            },
+                            { 
+                                label: detalle.tipoIngreso === 'Acta de Entrega-Recepción' ? 'Empresa proveedora / Institución' : 'Empresa proveedora', 
+                                value: detalle.tipoIngreso === 'Memorando de ingreso' ? '' : detalle.empresaProveedora 
+                            },
                             { label: 'Fecha de ingreso', value: formatDate(detalle.fechaIngreso) },
                             { label: 'Técnico receptor', value: detalle.tecnicoReceptor },
+                            { label: 'Responsable de entrega', value: detalle.responsableEntrega },
                             { label: 'Total de series', value: String(totalSeries(detalle)) }
-                        ].map(item => (
+                        ].filter(item => item.label && (item.value !== '' && item.value !== undefined)).map(item => (
                             <div key={item.label} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px' }}>
                                 <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{item.label}</div>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{item.value || '—'}</div>
