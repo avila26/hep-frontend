@@ -286,6 +286,11 @@ export interface Activo {
     tieneGarantia?: boolean;                 // heredado del encabezado del acta
     fechaInicioGarantia?: Date | null;       // heredado del acta
     fechaFinGarantia?: Date | null;          // heredado del acta
+    // ─── Campos de Cobertura de Mantenimiento por Proveedor ───
+    tieneCoberturaProveedor?: boolean;
+    nombreProveedor?: string;
+    fechaInicioCobertura?: Date | null;
+    fechaFinCobertura?: Date | null;
 }
 
 
@@ -354,6 +359,8 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null,
                     fechaInicioGarantia: a.fechaInicioGarantia ? new Date(a.fechaInicioGarantia) : null,
                     fechaFinGarantia: a.fechaFinGarantia ? new Date(a.fechaFinGarantia) : null,
+                    fechaInicioCobertura: a.fechaInicioCobertura ? new Date(a.fechaInicioCobertura) : null,
+                    fechaFinCobertura: a.fechaFinCobertura ? new Date(a.fechaFinCobertura) : null,
                     atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
             } catch (error) {

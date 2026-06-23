@@ -455,6 +455,68 @@ export const HojaDeVida: React.FC = () => {
                 );
             })()}
 
+            {/* ─ Cobertura de Mantenimiento por Proveedor ─ */}
+            {(activo.tieneCoberturaProveedor !== undefined || activo.nombreProveedor || activo.fechaFinCobertura) && (() => {
+                const tieneCobert = !!activo.tieneCoberturaProveedor;
+                const finCob = activo.fechaFinCobertura ? new Date(activo.fechaFinCobertura) : null;
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                if (finCob) finCob.setHours(0, 0, 0, 0);
+
+                const vigente = tieneCobert && finCob && finCob >= hoy;
+                const disponibleDesde = finCob
+                    ? new Date(finCob.getTime() + 86400000)
+                    : null;
+
+                const formatDateLocal = (d: Date | null) => {
+                    if (!d) return '—';
+                    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                };
+
+                return (
+                    <Card className="shadow-lg mb-6 border border-blue-100 dark:border-blue-900">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-blue-100 dark:border-blue-900">
+                            <h3 className="text-base font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 m-0">
+                                <i className="pi pi-shield" /> Cobertura de Mantenimiento por Proveedor
+                            </h3>
+                            <span className={`px-3 py-1 rounded text-xs font-semibold ${
+                                vigente
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'
+                            }`}>
+                                {vigente ? 'COBERTURA VIGENTE' : 'SIN COBERTURA / COBERTURA VENCIDA'}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded p-2">
+                                <div className="text-xs text-blue-700 dark:text-blue-400 uppercase font-semibold mb-1">Proveedor</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                    {activo.nombreProveedor || '—'}
+                                </div>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded p-2">
+                                <div className="text-xs text-blue-700 dark:text-blue-400 uppercase font-semibold mb-1">Vigencia Cobertura</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                    {activo.fechaInicioCobertura && activo.fechaFinCobertura
+                                        ? `${formatDateLocal(new Date(activo.fechaInicioCobertura))} al ${formatDateLocal(new Date(activo.fechaFinCobertura))}`
+                                        : '—'}
+                                </div>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded p-2">
+                                <div className="text-xs text-blue-700 dark:text-blue-400 uppercase font-semibold mb-1">Mantenimiento Interno</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                    {!tieneCobert
+                                        ? 'Disponible (Sin cobertura de proveedor)'
+                                        : vigente
+                                            ? `Bloqueado (Disponible desde: ${formatDateLocal(disponibleDesde)})`
+                                            : `Disponible (Cobertura vencida el ${formatDateLocal(finCob)})`}
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                );
+            })()}
+
             {/* Ficha Técnica Específica */}
             {activo.atributosEspecificos && (() => {
                 const key = getEspecificoKey(activo.categoriaActivo, activo.nombre);

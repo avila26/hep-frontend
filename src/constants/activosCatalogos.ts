@@ -115,7 +115,11 @@ export const COLUMNAS_PLANTILLA = [
     'Número de Contrato',
     'Item Presupuestario',
     'Partida Presupuestaria',
-    'Fecha DNS'
+    'Fecha DNS',
+    'tiene_cobertura_proveedor',
+    'nombre_proveedor',
+    'fecha_inicio_cobertura',
+    'fecha_fin_cobertura'
 ] as const;
 
 export const getCategoryCodeFromLabel = (categoryLabel: string): string => {

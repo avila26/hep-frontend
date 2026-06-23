@@ -432,6 +432,24 @@ const RegistrarActa: React.FC = () => {
                     textErrors.push(`Línea ${lineaIdx + 1} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la ubicación no está asignada`);
                     currentInvalid.add(`linea_${lineaIdx}_serie_${sIdx}_ubicacion`);
                 }
+
+                if (s.tieneCoberturaProveedor) {
+                    if (!s.nombreProveedor?.trim()) {
+                        textErrors.push(`Línea ${lineaIdx + 1} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: el nombre del proveedor es obligatorio si tiene cobertura`);
+                        currentInvalid.add(`linea_${lineaIdx}_serie_${sIdx}_nombreProveedor`);
+                    }
+                    if (!s.fechaInicioCobertura) {
+                        textErrors.push(`Línea ${lineaIdx + 1} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la fecha de inicio de cobertura es obligatoria`);
+                        currentInvalid.add(`linea_${lineaIdx}_serie_${sIdx}_fechaInicioCobertura`);
+                    }
+                    if (!s.fechaFinCobertura) {
+                        textErrors.push(`Línea ${lineaIdx + 1} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la fecha de fin de cobertura es obligatoria`);
+                        currentInvalid.add(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`);
+                    } else if (s.fechaInicioCobertura && s.fechaFinCobertura <= s.fechaInicioCobertura) {
+                        textErrors.push(`Línea ${lineaIdx + 1} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la fecha de fin de cobertura debe ser posterior a la de inicio`);
+                        currentInvalid.add(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`);
+                    }
+                }
             });
         });
 
@@ -696,7 +714,11 @@ const RegistrarActa: React.FC = () => {
                             codigoInstitucional: nextCI,
                             documentoRespaldo: docRespaldo,
                             ubicacion: '',
-                            codigoSBYE: ''
+                            codigoSBYE: '',
+                            tieneCoberturaProveedor: false,
+                            nombreProveedor: '',
+                            fechaInicioCobertura: null,
+                            fechaFinCobertura: null
                         }
                     ]
                 };
@@ -1762,6 +1784,104 @@ const RegistrarActa: React.FC = () => {
                                                     disabled={modoVista}
                                                 />
                                             </div>
+                                        </div>
+
+                                        {/* Cobertura de Mantenimiento del Proveedor */}
+                                        <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mb-3">
+                                            <span className="block text-xs font-semibold mb-2 flex items-center gap-1.5 text-slate-500">
+                                                🛡️ Cobertura por Proveedor
+                                            </span>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs text-slate-600">¿Tiene cobertura de proveedor?</span>
+                                                {modoVista ? (
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                        {serie.tieneCoberturaProveedor ? 'Sí' : 'No'}
+                                                    </span>
+                                                ) : (
+                                                    <InputSwitch
+                                                        checked={serie.tieneCoberturaProveedor || false}
+                                                        onChange={e => {
+                                                            updateSerie(lineaIdx, serie.idSerie, 'tieneCoberturaProveedor', e.value);
+                                                            if (!e.value) {
+                                                                updateSerie(lineaIdx, serie.idSerie, 'nombreProveedor', '');
+                                                                updateSerie(lineaIdx, serie.idSerie, 'fechaInicioCobertura', null);
+                                                                updateSerie(lineaIdx, serie.idSerie, 'fechaFinCobertura', null);
+                                                                clearError(`linea_${lineaIdx}_serie_${sIdx}_nombreProveedor`);
+                                                                clearError(`linea_${lineaIdx}_serie_${sIdx}_fechaInicioCobertura`);
+                                                                clearError(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`);
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+
+                                            {serie.tieneCoberturaProveedor && (
+                                                <div className="space-y-2 mt-2">
+                                                    <div>
+                                                        <span className={`block text-[10px] font-semibold uppercase ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_nombreProveedor`) ? 'text-red-500 font-bold' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                            Nombre Proveedor *
+                                                        </span>
+                                                        {modoVista ? (
+                                                            <span className="text-xs text-slate-700 dark:text-slate-355">{serie.nombreProveedor || '—'}</span>
+                                                        ) : (
+                                                            <InputText
+                                                                value={serie.nombreProveedor || ''}
+                                                                onChange={e => {
+                                                                    updateSerie(lineaIdx, serie.idSerie, 'nombreProveedor', e.target.value);
+                                                                    clearError(`linea_${lineaIdx}_serie_${sIdx}_nombreProveedor`);
+                                                                }}
+                                                                className={`text-xs w-full mt-1 p-1 h-7 ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_nombreProveedor`) ? 'p-invalid border-red-500' : ''}`}
+                                                                placeholder="Nombre Proveedor"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <span className={`block text-[10px] font-semibold uppercase ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_fechaInicioCobertura`) ? 'text-red-500 font-bold' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                                Fecha Inicio *
+                                                            </span>
+                                                            {modoVista ? (
+                                                                <span className="text-xs text-slate-705 dark:text-slate-355">
+                                                                    {serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura).toLocaleDateString('es-ES') : '—'}
+                                                                </span>
+                                                            ) : (
+                                                                <Calendar
+                                                                    value={serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura) : null}
+                                                                    onChange={e => {
+                                                                        updateSerie(lineaIdx, serie.idSerie, 'fechaInicioCobertura', e.value);
+                                                                        clearError(`linea_${lineaIdx}_serie_${sIdx}_fechaInicioCobertura`);
+                                                                    }}
+                                                                    dateFormat="dd/mm/yy"
+                                                                    showIcon
+                                                                    className={`text-xs w-full mt-1 h-7 ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_fechaInicioCobertura`) ? 'p-invalid border-red-500' : ''}`}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <span className={`block text-[10px] font-semibold uppercase ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`) ? 'text-red-500 font-bold' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                                Fecha Fin *
+                                                            </span>
+                                                            {modoVista ? (
+                                                                <span className="text-xs text-slate-705 dark:text-slate-355">
+                                                                    {serie.fechaFinCobertura ? new Date(serie.fechaFinCobertura).toLocaleDateString('es-ES') : '—'}
+                                                                </span>
+                                                            ) : (
+                                                                <Calendar
+                                                                    value={serie.fechaFinCobertura ? new Date(serie.fechaFinCobertura) : null}
+                                                                    onChange={e => {
+                                                                        updateSerie(lineaIdx, serie.idSerie, 'fechaFinCobertura', e.value);
+                                                                        clearError(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`);
+                                                                    }}
+                                                                    dateFormat="dd/mm/yy"
+                                                                    showIcon
+                                                                    minDate={serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura) : undefined}
+                                                                    className={`text-xs w-full mt-1 h-7 ${invalidFields.has(`linea_${lineaIdx}_serie_${sIdx}_fechaFinCobertura`) ? 'p-invalid border-red-500' : ''}`}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Observación */}

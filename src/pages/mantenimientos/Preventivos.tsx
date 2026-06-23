@@ -103,6 +103,39 @@ const Preventivos: React.FC = () => {
   const handleActivoChange = (codigoInst: string) => {
     const seleccionado = activosList.find(a => a.codigoInstitucional === codigoInst);
     if (seleccionado) {
+      if (seleccionado.tieneCoberturaProveedor && seleccionado.fechaFinCobertura) {
+        const finCobertura = new Date(seleccionado.fechaFinCobertura);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        finCobertura.setHours(0, 0, 0, 0);
+
+        if (finCobertura >= hoy) {
+          const fechaFormateada = `${String(finCobertura.getDate()).padStart(2, '0')}/${String(
+            finCobertura.getMonth() + 1
+          ).padStart(2, '0')}/${finCobertura.getFullYear()}`;
+
+          toast.current?.show({
+            severity: 'error',
+            summary: 'Cobertura de Proveedor Vigente',
+            detail: `Este activo está cubierto por mantenimiento del proveedor ${
+              seleccionado.nombreProveedor || 'del proveedor'
+            } hasta ${fechaFormateada}. No se puede registrar mantenimiento interno hasta esa fecha.`,
+            life: 8000
+          });
+
+          // Reset selection
+          setFormData(prev => ({
+            ...prev,
+            codigoActivo: '',
+            nombreActivo: '',
+            categoria: '',
+            ubicacion: '',
+            responsableCustodia: ''
+          }));
+          return;
+        }
+      }
+
       setFormData(prev => ({
         ...prev,
         codigoActivo: codigoInst,

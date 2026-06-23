@@ -47,7 +47,11 @@ export const FILA_EJEMPLO: Record<string, string | number> = {
     'Número de Contrato': 'CONTRATO-2024-001',
     'Item Presupuestario': 'ITEM-001',
     'Partida Presupuestaria': 'PART-001',
-    'Fecha DNS': '20/01/2024'
+    'Fecha DNS': '20/01/2024',
+    tiene_cobertura_proveedor: 'Sí',
+    nombre_proveedor: 'Philips Medical Systems',
+    fecha_inicio_cobertura: '15/01/2024',
+    fecha_fin_cobertura: '15/01/2026'
 };
 
 const textoCelda = (valor: unknown): string => {
@@ -280,6 +284,36 @@ const validarFila = (
         errores.push('La fecha DNS no tiene un formato válido (use dd/mm/aaaa)');
     }
 
+    // Cobertura por Proveedor
+    const tieneCoberturaProveedorRaw = textoCelda(fila.tiene_cobertura_proveedor).toLowerCase();
+    const tieneCoberturaProveedor = tieneCoberturaProveedorRaw === 'sí' || tieneCoberturaProveedorRaw === 'si' || tieneCoberturaProveedorRaw === 'true' || tieneCoberturaProveedorRaw === 'yes';
+    const nombreProveedor = tieneCoberturaProveedor ? textoCelda(fila.nombre_proveedor) : '';
+    const fechaInicioCobertura = tieneCoberturaProveedor ? parseFecha(fila.fecha_inicio_cobertura) : null;
+    const fechaFinCobertura = tieneCoberturaProveedor ? parseFecha(fila.fecha_fin_cobertura) : null;
+
+    if (tieneCoberturaProveedorRaw && tieneCoberturaProveedorRaw !== 'sí' && tieneCoberturaProveedorRaw !== 'si' && tieneCoberturaProveedorRaw !== 'no' && tieneCoberturaProveedorRaw !== 'false' && tieneCoberturaProveedorRaw !== 'true') {
+        errores.push('El campo tiene_cobertura_proveedor debe ser "Sí" o "No"');
+    }
+
+    if (tieneCoberturaProveedor) {
+        if (!nombreProveedor) {
+            errores.push('El nombre del proveedor es obligatorio si tiene cobertura');
+        }
+        if (!fila.fecha_inicio_cobertura || celdaVacia(fila.fecha_inicio_cobertura)) {
+            errores.push('La fecha de inicio de cobertura es obligatoria si tiene cobertura');
+        } else if (!fechaInicioCobertura) {
+            errores.push('La fecha de inicio de cobertura no tiene un formato válido (use dd/mm/aaaa)');
+        }
+        if (!fila.fecha_fin_cobertura || celdaVacia(fila.fecha_fin_cobertura)) {
+            errores.push('La fecha de fin de cobertura es obligatoria si tiene cobertura');
+        } else if (!fechaFinCobertura) {
+            errores.push('La fecha de fin de cobertura no tiene un formato válido (use dd/mm/aaaa)');
+        }
+        if (fechaInicioCobertura && fechaFinCobertura && fechaFinCobertura <= fechaInicioCobertura) {
+            errores.push('La fecha de fin de cobertura debe ser posterior a la de inicio');
+        }
+    }
+
     if (errores.length > 0) {
         return {
             numeroFila,
@@ -324,7 +358,11 @@ const validarFila = (
         unidadMedida,
         estadoActivo,
         condicionDepreciacion,
-        ubicacion: ubicacion!
+        ubicacion: ubicacion!,
+        tieneCoberturaProveedor,
+        nombreProveedor,
+        fechaInicioCobertura: fechaInicioCobertura ?? null,
+        fechaFinCobertura: fechaFinCobertura ?? null
     };
 
     return {

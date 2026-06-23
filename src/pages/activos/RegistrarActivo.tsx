@@ -9,6 +9,7 @@ import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
+import { InputSwitch } from 'primereact/inputswitch';
 import CreatableSelect from 'react-select/creatable';
 import type { SingleValue } from 'react-select';
 import { useNavigate } from 'react-router-dom';
@@ -88,6 +89,10 @@ interface Activo {
     condicionDepreciacion: string;
     ubicacion: string;
     atributosEspecificos?: any;
+    tieneCoberturaProveedor?: boolean;
+    nombreProveedor?: string;
+    fechaInicioCobertura?: Date | null;
+    fechaFinCobertura?: Date | null;
 }
 
 
@@ -190,7 +195,11 @@ export const RegistrarActivo: React.FC = () => {
         unidadMedida: '',
         estadoActivo: '',
         condicionDepreciacion: '',
-        ubicacion: ''
+        ubicacion: '',
+        tieneCoberturaProveedor: false,
+        nombreProveedor: '',
+        fechaInicioCobertura: null,
+        fechaFinCobertura: null
     });
 
     const [nombreOptions, setNombreOptions] = useState<NombreGroup[]>(GROUPED_NOMBRE_OPTIONS);
@@ -409,6 +418,21 @@ export const RegistrarActivo: React.FC = () => {
             newErrors.fechaAdquisicion = 'La fecha de adquisición es obligatoria';
         } else if (formData.fechaAdquisicion > new Date()) {
             newErrors.fechaAdquisicion = 'La fecha no puede ser futura';
+        }
+
+        // Validación de Cobertura por Proveedor
+        if (formData.tieneCoberturaProveedor) {
+            if (!formData.nombreProveedor?.trim()) {
+                newErrors.nombreProveedor = 'El nombre del proveedor es obligatorio';
+            }
+            if (!formData.fechaInicioCobertura) {
+                newErrors.fechaInicioCobertura = 'La fecha de inicio de cobertura es obligatoria';
+            }
+            if (!formData.fechaFinCobertura) {
+                newErrors.fechaFinCobertura = 'La fecha de fin de cobertura es obligatoria';
+            } else if (formData.fechaInicioCobertura && formData.fechaFinCobertura <= formData.fechaInicioCobertura) {
+                newErrors.fechaFinCobertura = 'La fecha de fin debe ser posterior a la de inicio';
+            }
         }
 
         // Validaciones de IP/MAC según el bloque activo
@@ -753,6 +777,69 @@ export const RegistrarActivo: React.FC = () => {
                             <label className="block text-sm font-medium mb-2">Partida Presupuestaria</label>
                             <InputText value={formData.partidaPresupuestaria} onChange={e => handleInputChange('partidaPresupuestaria', e.target.value)} placeholder="Partida presupuestaria" className="w-full" />
                         </div>
+                    </div>
+                </div>
+
+                <Divider />
+
+                {/* SECCIÓN 6: Cobertura de Mantenimiento por Proveedor */}
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-600">
+                        Cobertura de Mantenimiento por Proveedor
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="col-span-1 md:col-span-2 flex items-center gap-3">
+                            <label className="text-sm font-medium">¿Tiene cobertura de mantenimiento por proveedor?</label>
+                            <InputSwitch 
+                                checked={formData.tieneCoberturaProveedor || false} 
+                                onChange={e => {
+                                    handleInputChange('tieneCoberturaProveedor', e.value);
+                                    if (!e.value) {
+                                        handleInputChange('nombreProveedor', '');
+                                        handleInputChange('fechaInicioCobertura', null);
+                                        handleInputChange('fechaFinCobertura', null);
+                                    }
+                                }} 
+                            />
+                        </div>
+
+                        {formData.tieneCoberturaProveedor && (
+                            <>
+                                <div className="col-span-1 md:col-span-2">
+                                    <label className="block text-sm font-medium mb-2">Nombre del Proveedor <span className="text-red-500">*</span></label>
+                                    <InputText 
+                                        value={formData.nombreProveedor || ''} 
+                                        onChange={e => handleInputChange('nombreProveedor', e.target.value)} 
+                                        placeholder="Ej: Philips Medical Systems" 
+                                        className={`w-full ${errors.nombreProveedor ? 'p-invalid' : ''}`} 
+                                    />
+                                    {errors.nombreProveedor && <small className="text-red-500">{errors.nombreProveedor}</small>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Fecha Inicio de Cobertura <span className="text-red-500">*</span></label>
+                                    <Calendar 
+                                        value={formData.fechaInicioCobertura} 
+                                        onChange={e => handleInputChange('fechaInicioCobertura', e.value)} 
+                                        dateFormat="dd/mm/yy" 
+                                        showIcon 
+                                        className={`w-full ${errors.fechaInicioCobertura ? 'p-invalid' : ''}`} 
+                                    />
+                                    {errors.fechaInicioCobertura && <small className="text-red-500">{errors.fechaInicioCobertura}</small>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Fecha Fin de Cobertura <span className="text-red-500">*</span></label>
+                                    <Calendar 
+                                        value={formData.fechaFinCobertura} 
+                                        onChange={e => handleInputChange('fechaFinCobertura', e.value)} 
+                                        dateFormat="dd/mm/yy" 
+                                        showIcon 
+                                        minDate={formData.fechaInicioCobertura || undefined}
+                                        className={`w-full ${errors.fechaFinCobertura ? 'p-invalid' : ''}`} 
+                                    />
+                                    {errors.fechaFinCobertura && <small className="text-red-500">{errors.fechaFinCobertura}</small>}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 

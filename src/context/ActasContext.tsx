@@ -15,6 +15,10 @@ export interface SerieActa {
     responsableEntrega?: string;
     codigoInstitucional?: string;
     documentoRespaldo?: string;
+    tieneCoberturaProveedor?: boolean;
+    nombreProveedor?: string;
+    fechaInicioCobertura?: Date | null;
+    fechaFinCobertura?: Date | null;
 }
 
 /** Nivel 2 — Un grupo de activos del mismo tipo dentro del acta */
@@ -165,7 +169,15 @@ const parseDatesActa = (raw: any): ActaIngreso => ({
     fechaMemorando: raw.fechaMemorando ? new Date(raw.fechaMemorando) : null,
     fechaActa: raw.fechaActa ? new Date(raw.fechaActa) : null,
     fechaSuscripcion: raw.fechaSuscripcion ? new Date(raw.fechaSuscripcion) : null,
-    fechaVigencia: raw.fechaVigencia ? new Date(raw.fechaVigencia) : null
+    fechaVigencia: raw.fechaVigencia ? new Date(raw.fechaVigencia) : null,
+    lineas: raw.lineas ? raw.lineas.map((linea: any) => ({
+        ...linea,
+        series: linea.series ? linea.series.map((serie: any) => ({
+            ...serie,
+            fechaInicioCobertura: serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura) : null,
+            fechaFinCobertura: serie.fechaFinCobertura ? new Date(serie.fechaFinCobertura) : null
+        })) : []
+    })) : []
 });
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -347,7 +359,12 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         codigoBarras: cb,
                         tieneGarantia: acta.tieneGarantia,
                         fechaInicioGarantia: acta.fechaInicioGarantia ?? null,
-                        fechaFinGarantia: acta.fechaFinGarantia ?? null
+                        fechaFinGarantia: acta.fechaFinGarantia ?? null,
+                        // Campos de cobertura de proveedor
+                        tieneCoberturaProveedor: serie.tieneCoberturaProveedor,
+                        nombreProveedor: serie.nombreProveedor,
+                        fechaInicioCobertura: serie.fechaInicioCobertura ?? null,
+                        fechaFinCobertura: serie.fechaFinCobertura ?? null
                     });
 
                     return { ...serie, codigoBarras: cb };
