@@ -352,12 +352,6 @@ export const ConsultarActivos: React.FC = () => {
                 {/* Cabecera del listado */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <h5 className="m-0 text-xl font-semibold text-slate-800 dark:text-slate-100">Listado de Activos</h5>
-                    <Button
-                        label="Registrar Nuevo"
-                        icon="pi pi-plus"
-                        onClick={() => navigate('/activos/registrar')}
-                        className="w-full sm:w-auto"
-                    />
                 </div>
 
                 {/* Tabla de activos */}
@@ -407,11 +401,6 @@ export const ConsultarActivos: React.FC = () => {
                 ) : (
                     <div className="text-center py-8">
                         <p className="text-slate-500 mb-4">No hay activos registrados aún.</p>
-                        <Button
-                            label="Registrar el primer activo"
-                            icon="pi pi-plus"
-                            onClick={() => navigate('/activos/registrar')}
-                        />
                     </div>
                 )}
             </Card>

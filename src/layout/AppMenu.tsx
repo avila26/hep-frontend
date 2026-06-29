@@ -29,8 +29,8 @@ export const AppMenu: React.FC = () => {
             items: [
                 { label: 'Ingresar Activo', icon: 'pi pi-fw pi-plus-circle', routerLink: ['/activos/ingresar'] },
                 { label: 'Consultar Activos', icon: 'pi pi-fw pi-search', routerLink: ['/activos/consultar'] },
-                { label: 'Hoja de Vida', icon: 'pi pi-fw pi-history', routerLink: ['/activos/hoja-vida'] },
                 { label: 'Historial de Actas', icon: 'pi pi-fw pi-file', routerLink: ['/activos/actas'] }
+        
             ]
         },
         {
