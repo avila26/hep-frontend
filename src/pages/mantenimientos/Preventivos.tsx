@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -13,9 +13,10 @@ import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import { Divider } from 'primereact/divider';
+import { Chip } from 'primereact/chip';
+import { Checkbox } from 'primereact/checkbox';
 import { useMantenimientosContext, MantenimientoHEP } from '../../context/MantenimientosContext';
-import { useActivos } from '../../context/ActivosContext';
+import { useActivos, Activo } from '../../context/ActivosContext';
 
 /* ------------------------------------------------------------------ */
 /*  Constantes                                                        */
@@ -50,12 +51,7 @@ const formatDate = (date: Date | string | undefined): string => {
 };
 
 interface MantenimientoFormData {
-  codigoActivo: string;
-  nombreActivo: string;
-  categoria: string;
-  ubicacion: string;
   responsableTecnico: string;
-  responsableCustodia: string;
   fechaProgramada: Date | null;
   descripcionTrabajo: string;
   observaciones: string;
@@ -67,12 +63,7 @@ interface MantenimientoFormData {
 }
 
 const initialFormData: MantenimientoFormData = {
-  codigoActivo: '',
-  nombreActivo: '',
-  categoria: '',
-  ubicacion: '',
   responsableTecnico: '',
-  responsableCustodia: '',
   fechaProgramada: null,
   descripcionTrabajo: '',
   observaciones: '',
@@ -97,63 +88,129 @@ const Preventivos: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<MantenimientoHEP | null>(null);
   const [formData, setFormData] = useState<MantenimientoFormData>(initialFormData);
 
+  // Nuevos Estados
+  const [paso, setPaso] = useState<1 | 2>(1);
+  const [filtros, setFiltros] = useState({ busqueda: '', categoria: '', ubicacion: '' });
+  const [activosSeleccionados, setActivosSeleccionados] = useState<Activo[]>([]);
+
   const toast = useRef<Toast>(null);
 
-  // Autocompletado al seleccionar activo
-  const handleActivoChange = (codigoInst: string) => {
-    const seleccionado = activosList.find(a => a.codigoInstitucional === codigoInst);
-    if (seleccionado) {
-      if (seleccionado.tieneCoberturaProveedor && seleccionado.fechaFinCobertura) {
-        const finCobertura = new Date(seleccionado.fechaFinCobertura);
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        finCobertura.setHours(0, 0, 0, 0);
+  // Helper to check provider coverage
+  const hasActiveProviderCoverage = (a: Activo): boolean => {
+    if (!a.tieneCoberturaProveedor || !a.fechaFinCobertura) return false;
+    const finCobertura = new Date(a.fechaFinCobertura);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    finCobertura.setHours(0, 0, 0, 0);
+    return finCobertura >= hoy;
+  };
 
-        if (finCobertura >= hoy) {
-          const fechaFormateada = `${String(finCobertura.getDate()).padStart(2, '0')}/${String(
-            finCobertura.getMonth() + 1
-          ).padStart(2, '0')}/${finCobertura.getFullYear()}`;
+  // Filtrado de activos
+  const listableActivos = activosList.filter(a => !hasActiveProviderCoverage(a));
 
-          toast.current?.show({
-            severity: 'error',
-            summary: 'Cobertura de Proveedor Vigente',
-            detail: `Este activo está cubierto por mantenimiento del proveedor ${
-              seleccionado.nombreProveedor || 'del proveedor'
-            } hasta ${fechaFormateada}. No se puede registrar mantenimiento interno hasta esa fecha.`,
-            life: 8000
-          });
+  const matchBusqueda = (a: Activo) => {
+    if (!filtros.busqueda.trim()) return true;
+    const searchVal = filtros.busqueda.toLowerCase();
+    return (
+      a.codigoInstitucional?.toLowerCase().includes(searchVal) ||
+      a.nombre?.toLowerCase().includes(searchVal) ||
+      a.numeroSerie?.toLowerCase().includes(searchVal)
+    );
+  };
 
-          // Reset selection
-          setFormData(prev => ({
-            ...prev,
-            codigoActivo: '',
-            nombreActivo: '',
-            categoria: '',
-            ubicacion: '',
-            responsableCustodia: ''
-          }));
-          return;
-        }
-      }
+  const matchCategoria = (a: Activo) => {
+    if (!filtros.categoria) return true;
+    return a.categoriaActivo === filtros.categoria;
+  };
 
-      setFormData(prev => ({
-        ...prev,
-        codigoActivo: codigoInst,
-        nombreActivo: seleccionado.nombre,
-        categoria: seleccionado.categoriaActivo || 'Sin Categoría',
-        ubicacion: seleccionado.ubicacion || 'Sin Ubicación',
-        responsableCustodia: seleccionado.responsableEntrega || 'Sin Custodio'
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        codigoActivo: '',
-        nombreActivo: '',
-        categoria: '',
-        ubicacion: '',
-        responsableCustodia: ''
-      }));
+  const matchUbicacion = (a: Activo) => {
+    if (!filtros.ubicacion) return true;
+    return a.ubicacion === filtros.ubicacion;
+  };
+
+  const activosFiltrados = listableActivos.filter(
+    a => matchBusqueda(a) && matchCategoria(a) && matchUbicacion(a)
+  );
+
+  // Opciones de filtros
+  const categoriasOptions = Array.from(
+    new Set(activosList.map(a => a.categoriaActivo).filter(Boolean))
+  ).map(cat => ({ label: cat, value: cat }));
+
+  const ubicacionesOptions = Array.from(
+    new Set(activosList.map(a => a.ubicacion).filter(Boolean))
+  ).map(ub => ({ label: ub, value: ub }));
+
+  // Selección masiva contextual
+  const unFiltroActivo = !!(filtros.busqueda.trim() || filtros.categoria || filtros.ubicacion);
+
+  let activeFilterLabel = '';
+  let activeFilterIcon = 'pi pi-filter';
+
+  if (filtros.ubicacion) {
+    activeFilterLabel = `ubicación "${filtros.ubicacion}"`;
+    activeFilterIcon = 'pi pi-map-marker';
+  } else if (filtros.categoria) {
+    activeFilterLabel = `categoría "${filtros.categoria}"`;
+    activeFilterIcon = 'pi pi-tag';
+  } else if (filtros.busqueda.trim()) {
+    activeFilterLabel = `búsqueda "${filtros.busqueda.trim()}"`;
+    activeFilterIcon = 'pi pi-search';
+  }
+
+  const todosFiltradosSeleccionados =
+    activosFiltrados.length > 0 &&
+    activosFiltrados.every(a => activosSeleccionados.some(sel => sel.idActivo === a.idActivo));
+
+  const countSelectedInFiltered = activosFiltrados.filter(a =>
+    activosSeleccionados.some(sel => sel.idActivo === a.idActivo)
+  ).length;
+
+  const checkedAllFiltered =
+    activosFiltrados.length > 0 && countSelectedInFiltered === activosFiltrados.length;
+  const indeterminateAllFiltered =
+    countSelectedInFiltered > 0 && countSelectedInFiltered < activosFiltrados.length;
+
+  const selectAllFilteredRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectAllFilteredRef.current) {
+      selectAllFilteredRef.current.indeterminate = indeterminateAllFiltered;
     }
+  }, [indeterminateAllFiltered]);
+
+  // Handlers de selección
+  const handleToggleAsset = (activo: Activo) => {
+    setActivosSeleccionados(prev => {
+      const exists = prev.some(sel => sel.idActivo === activo.idActivo);
+      if (exists) {
+        return prev.filter(sel => sel.idActivo !== activo.idActivo);
+      } else {
+        return [...prev, activo];
+      }
+    });
+  };
+
+  const handleToggleAllFiltered = (checked: boolean) => {
+    if (checked) {
+      setActivosSeleccionados(prev => {
+        const newSelection = [...prev];
+        activosFiltrados.forEach(a => {
+          if (!newSelection.some(sel => sel.idActivo === a.idActivo)) {
+            newSelection.push(a);
+          }
+        });
+        return newSelection;
+      });
+    } else {
+      setActivosSeleccionados(prev =>
+        prev.filter(sel => !activosFiltrados.some(a => a.idActivo === sel.idActivo))
+      );
+    }
+  };
+
+  const handleRemoveAsset = (idActivo: number) => {
+    setActivosSeleccionados(prev => prev.filter(sel => sel.idActivo !== idActivo));
   };
 
   const handleFieldChange = (key: keyof MantenimientoFormData, value: any) => {
@@ -170,12 +227,19 @@ const Preventivos: React.FC = () => {
     ).padStart(2, '0')}`;
   };
 
+  const resetFormAndSteps = () => {
+    setFormData(initialFormData);
+    setActivosSeleccionados([]);
+    setFiltros({ busqueda: '', categoria: '', ubicacion: '' });
+    setPaso(1);
+  };
+
   const validateForm = () => {
-    if (!formData.codigoActivo) {
+    if (activosSeleccionados.length === 0) {
       toast.current?.show({
         severity: 'warn',
-        summary: 'Campo faltante',
-        detail: 'El Activo a mantener es obligatorio.',
+        summary: 'Falta selección',
+        detail: 'Debe seleccionar al menos un activo.',
         life: 3000
       });
       return false;
@@ -215,37 +279,39 @@ const Preventivos: React.FC = () => {
 
     const formattedDate = convertDateToYYYYMMDD(formData.fechaProgramada);
 
-    agregarMantenimiento({
-      codigoActivo: formData.codigoActivo,
-      nombreActivo: formData.nombreActivo,
-      categoria: formData.categoria,
-      ubicacion: formData.ubicacion,
-      responsableTecnico: formData.responsableTecnico,
-      responsableCustodia: formData.responsableCustodia,
-      fechaProgramada: formattedDate,
-      descripcionTrabajo: formData.descripcionTrabajo,
-      diagnostico: formData.diagnostico,
-      repuestosUtilizados: formData.repuestosUtilizados,
-      observaciones: formData.observaciones,
-      prioridad: formData.prioridad,
-      creadoPor: formData.creadoPor,
-      tipo: formData.tipo
+    activosSeleccionados.forEach(activo => {
+      agregarMantenimiento({
+        codigoActivo: activo.codigoInstitucional,
+        nombreActivo: activo.nombre,
+        categoria: activo.categoriaActivo || 'Sin Categoría',
+        ubicacion: activo.ubicacion || 'Sin Ubicación',
+        responsableTecnico: formData.responsableTecnico,
+        responsableCustodia: activo.responsableEntrega || 'Sin Custodio',
+        fechaProgramada: formattedDate,
+        descripcionTrabajo: formData.descripcionTrabajo,
+        diagnostico: formData.diagnostico || '',
+        repuestosUtilizados: formData.repuestosUtilizados || '',
+        observaciones: formData.observaciones,
+        prioridad: formData.prioridad,
+        creadoPor: formData.creadoPor,
+        tipo: formData.tipo
+      });
     });
 
     toast.current?.show({
       severity: 'success',
       summary: 'Éxito',
-      detail: 'Mantenimiento preventivo registrado correctamente.',
+      detail: `${activosSeleccionados.length} mantenimiento(s) preventivo(s) registrado(s) correctamente.`,
       life: 3000
     });
 
     setDialogNuevo(false);
-    setFormData(initialFormData);
+    resetFormAndSteps();
   };
 
   const handleCancelNew = () => {
     setDialogNuevo(false);
-    setFormData(initialFormData);
+    resetFormAndSteps();
   };
 
   const handleConfirmIniciar = () => {
@@ -354,10 +420,37 @@ const Preventivos: React.FC = () => {
     );
   };
 
-  const newMantenimientoDialogFooter = (
-    <div className="flex justify-end gap-2 pt-2">
-      <Button label="Cancelar" severity="secondary" onClick={handleCancelNew} />
-      <Button label="Registrar" severity="success" onClick={handleSaveMantenimiento} />
+  const newMantenimientoDialogFooter = paso === 1 ? (
+    <div className="flex align-items-center justify-content-between w-full pt-2">
+      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+        {activosSeleccionados.length} activo(s) seleccionado(s)
+      </div>
+      <div className="flex gap-2">
+        <Button label="Cancelar" severity="secondary" onClick={handleCancelNew} />
+        <Button
+          label="Continuar →"
+          severity="success"
+          disabled={activosSeleccionados.length === 0}
+          onClick={() => setPaso(2)}
+        />
+      </div>
+    </div>
+  ) : (
+    <div className="flex align-items-center justify-content-between w-full pt-2">
+      <Button
+        label="← Volver"
+        severity="secondary"
+        outlined
+        onClick={() => setPaso(1)}
+      />
+      <div className="flex gap-2">
+        <Button label="Cancelar" severity="secondary" onClick={handleCancelNew} />
+        <Button
+          label={`Registrar ${activosSeleccionados.length} mantenimiento(s)`}
+          severity="success"
+          onClick={handleSaveMantenimiento}
+        />
+      </div>
     </div>
   );
 
@@ -457,163 +550,266 @@ const Preventivos: React.FC = () => {
       <Dialog
         header="Registrar Mantenimiento Preventivo"
         visible={dialogNuevo}
-        style={{ width: '700px' }}
+        style={{ width: '750px' }}
         modal
         resizable
         onHide={handleCancelNew}
         footer={newMantenimientoDialogFooter}
       >
         <div className="p-fluid">
-          <h5 className="text-slate-600 dark:text-slate-300 font-semibold mb-2">Datos del Activo</h5>
-          <div className="grid">
-            <div className="col-12 md:col-6 mb-3">
-              <label htmlFor="activo" className="block text-sm font-medium mb-1">
-                Activo a mantener <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="activo"
-                value={formData.codigoActivo}
-                onChange={e => handleActivoChange(e.value)}
-                options={activosList.map(a => ({
-                  label: `${a.codigoInstitucional} - ${a.nombre} (${a.numeroSerie})`,
-                  value: a.codigoInstitucional
-                }))}
-                placeholder="Seleccione el activo a mantener"
-                filter
-              />
-            </div>
-            <div className="col-12 md:col-6 mb-3">
-              <label htmlFor="fechaProgramada" className="block text-sm font-medium mb-1">
-                Fecha programada <span className="text-red-500">*</span>
-              </label>
-              <Calendar
-                id="fechaProgramada"
-                value={formData.fechaProgramada}
-                onChange={e => handleFieldChange('fechaProgramada', e.value)}
-                dateFormat="dd/mm/yy"
-                placeholder="DD/MM/AAAA"
-                showIcon
-              />
-            </div>
+          {paso === 1 ? (
+            <div>
+              <h5 className="text-slate-650 dark:text-slate-350 font-semibold mb-2">Paso 1: Selección de Activos</h5>
+              
+              {/* Barra de Filtros */}
+              <div className="grid mb-3">
+                <div className="col-12 md:col-4">
+                  <label htmlFor="searchFilter" className="block text-sm font-medium mb-1">
+                    Buscar activo
+                  </label>
+                  <IconField iconPosition="left" className="w-full">
+                    <InputIcon className="pi pi-search" />
+                    <InputText
+                      id="searchFilter"
+                      value={filtros.busqueda}
+                      onChange={e => setFiltros(prev => ({ ...prev, busqueda: e.target.value }))}
+                      placeholder="Código, nombre o serie..."
+                      className="w-full"
+                    />
+                  </IconField>
+                </div>
+                <div className="col-12 md:col-4">
+                  <label htmlFor="categoriaFilter" className="block text-sm font-medium mb-1">
+                    Categoría
+                  </label>
+                  <Dropdown
+                    id="categoriaFilter"
+                    value={filtros.categoria}
+                    options={categoriasOptions}
+                    onChange={e => setFiltros(prev => ({ ...prev, categoria: e.value }))}
+                    placeholder="Todas las categorías"
+                    showClear
+                    className="w-full"
+                  />
+                </div>
+                <div className="col-12 md:col-4">
+                  <label htmlFor="ubicacionFilter" className="block text-sm font-medium mb-1">
+                    Ubicación
+                  </label>
+                  <Dropdown
+                    id="ubicacionFilter"
+                    value={filtros.ubicacion}
+                    options={ubicacionesOptions}
+                    onChange={e => setFiltros(prev => ({ ...prev, ubicacion: e.value }))}
+                    placeholder="Todas las ubicaciones"
+                    showClear
+                    className="w-full"
+                  />
+                </div>
+              </div>
 
-            {/* Campos autocompletados */}
-            <div className="col-12 md:col-6 mb-3">
-              <label className="block text-sm font-medium mb-1 text-slate-400">
-                Nombre del activo (Auto)
-              </label>
-              <InputText
-                value={formData.nombreActivo}
-                disabled
-                placeholder="Se autocompleta al seleccionar el activo"
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-            <div className="col-12 md:col-6 mb-3">
-              <label className="block text-sm font-medium mb-1 text-slate-400">
-                Categoría (Auto)
-              </label>
-              <InputText
-                value={formData.categoria}
-                disabled
-                placeholder="Se autocompleta al seleccionar el activo"
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-            <div className="col-12 md:col-6 mb-3">
-              <label className="block text-sm font-medium mb-1 text-slate-400">
-                Ubicación (Auto)
-              </label>
-              <InputText
-                value={formData.ubicacion}
-                disabled
-                placeholder="Se autocompleta al seleccionar el activo"
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-            <div className="col-12 md:col-6 mb-3">
-              <label className="block text-sm font-medium mb-1 text-slate-400">
-                Responsable Custodia (Auto)
-              </label>
-              <InputText
-                value={formData.responsableCustodia}
-                disabled
-                placeholder="Se autocompleta al seleccionar el activo"
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-          </div>
+              {/* Botón de selección masiva contextual */}
+              {unFiltroActivo && (
+                <div className="mb-3">
+                  <Button
+                    type="button"
+                    label={`${
+                      todosFiltradosSeleccionados ? 'Deseleccionar' : 'Seleccionar'
+                    } todos los bienes de ${activeFilterLabel} (${activosFiltrados.length})`}
+                    icon={activeFilterIcon}
+                    severity="warning"
+                    className="w-full"
+                    onClick={() => handleToggleAllFiltered(!todosFiltradosSeleccionados)}
+                  />
+                </div>
+              )}
 
-          <Divider className="my-3" />
+              {/* Checkbox Seleccionar Todos / Deseleccionar Todos (Filtrados) */}
+              <div className="flex align-items-center gap-2 mb-2 px-2 py-1 bg-slate-50 dark:bg-slate-800/40 border-round">
+                <Checkbox
+                  id="selectAllFiltered"
+                  checked={checkedAllFiltered}
+                  inputRef={selectAllFilteredRef}
+                  onChange={() => handleToggleAllFiltered(!checkedAllFiltered)}
+                />
+                <label
+                  htmlFor="selectAllFiltered"
+                  className="text-sm font-medium cursor-pointer select-none"
+                >
+                  Seleccionar todos / Deseleccionar todos (Filtrados)
+                </label>
+              </div>
 
-          <h5 className="text-slate-600 dark:text-slate-300 font-semibold mb-2">Responsables</h5>
-          <div className="grid">
-            <div className="col-12 md:col-6 mb-3">
-              <label htmlFor="responsableTecnico" className="block text-sm font-medium mb-1">
-                Técnico responsable <span className="text-red-500">*</span>
-              </label>
-              <Dropdown
-                id="responsableTecnico"
-                value={formData.responsableTecnico}
-                onChange={e => handleFieldChange('responsableTecnico', e.value)}
-                options={TECNICOS_MANTENIMIENTO.map(t => ({ label: t, value: t }))}
-                placeholder="Seleccione el técnico"
-                filter
-              />
-            </div>
-            <div className="col-12 md:col-6 mb-3">
-              <label htmlFor="creadoPor" className="block text-sm font-medium mb-1">
-                Creado por
-              </label>
-              <InputText
-                id="creadoPor"
-                value={formData.creadoPor}
-                onChange={e => handleFieldChange('creadoPor', e.target.value)}
-                placeholder="Nombre de quien registra"
-              />
-            </div>
-          </div>
+              {/* Lista scrolleable de activos */}
+              <div className="border-1 border-slate-200 dark:border-slate-700 border-round overflow-hidden">
+                {/* Cabecera de la lista */}
+                <div className="flex align-items-center gap-3 p-2.5 bg-slate-100 dark:bg-slate-800 border-bottom-1 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <div style={{ width: '20px' }}></div>
+                  <div className="flex-1 flex gap-2">
+                    <span style={{ width: '100px' }}>Código</span>
+                    <span style={{ flex: 2 }}>Nombre</span>
+                    <span style={{ flex: 1.2 }}>Categoría</span>
+                    <span style={{ flex: 1.2 }}>Ubicación</span>
+                    <span style={{ width: '120px' }}>Serie</span>
+                  </div>
+                </div>
+                {/* Cuerpo scrolleable */}
+                <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                  {activosFiltrados.map(a => {
+                    const isSelected = activosSeleccionados.some(sel => sel.idActivo === a.idActivo);
+                    return (
+                      <div
+                        key={a.idActivo}
+                        onClick={() => handleToggleAsset(a)}
+                        className={`flex align-items-center gap-3 p-2.5 border-bottom-1 border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-green-50 text-green-950 dark:bg-green-950/20 dark:text-green-300'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-350'
+                        }`}
+                      >
+                        <Checkbox checked={isSelected} onChange={() => {}} />
+                        <div className="flex-1 flex gap-2 text-sm align-items-center">
+                          <span className="font-bold text-slate-800 dark:text-slate-200" style={{ width: '100px' }}>
+                            {a.codigoInstitucional}
+                          </span>
+                          <span className="text-slate-755 dark:text-slate-300 font-medium" style={{ flex: 2 }}>
+                            {a.nombre}
+                          </span>
+                          <span className="text-slate-600 dark:text-slate-400 text-xs" style={{ flex: 1.2 }}>
+                            {a.categoriaActivo || '—'}
+                          </span>
+                          <span className="text-slate-600 dark:text-slate-400 text-xs" style={{ flex: 1.2 }}>
+                            {a.ubicacion || '—'}
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-500 text-xs" style={{ width: '120px' }}>
+                            {a.numeroSerie || '—'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {activosFiltrados.length === 0 && (
+                    <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                      No hay activos disponibles que coincidan con los filtros.
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <Divider className="my-3" />
+              {/* Chips de activos seleccionados */}
+              <div className="flex flex-wrap gap-2 mt-3 max-h-24 overflow-y-auto p-1">
+                {activosSeleccionados.map(a => (
+                  <Chip
+                    key={a.idActivo}
+                    label={`${a.codigoInstitucional} - ${a.nombre}`}
+                    removable
+                    onRemove={() => {
+                      handleRemoveAsset(a.idActivo);
+                      return true;
+                    }}
+                    className="text-xs"
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h5 className="text-slate-650 dark:text-slate-350 font-semibold mb-2">Paso 2: Datos del Mantenimiento</h5>
+              
+              {/* Resumen visual de seleccionados */}
+              <div className="p-3 mb-3 bg-slate-50 dark:bg-slate-850/50 border-round">
+                <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  Activos Seleccionados ({activosSeleccionados.length})
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {activosSeleccionados.map(a => (
+                    <Tag
+                      key={a.idActivo}
+                      value={`${a.codigoInstitucional} - ${a.nombre}`}
+                      severity="info"
+                    />
+                  ))}
+                </div>
+              </div>
 
-          <h5 className="text-slate-600 dark:text-slate-300 font-semibold mb-2">Detalles</h5>
-          <div className="grid">
-            <div className="col-12 md:col-6 mb-3">
-              <label htmlFor="prioridad" className="block text-sm font-medium mb-1">
-                Prioridad
-              </label>
-              <Dropdown
-                id="prioridad"
-                value={formData.prioridad}
-                onChange={e => handleFieldChange('prioridad', e.value)}
-                options={PRIORIDADES.map(p => ({ label: p, value: p }))}
-                placeholder="Seleccione la prioridad"
-              />
+              {/* Formulario de Mantenimiento (Paso 2) */}
+              <div className="grid">
+                <div className="col-12 md:col-6 mb-3">
+                  <label htmlFor="fechaProgramada" className="block text-sm font-medium mb-1">
+                    Fecha programada <span className="text-red-500">*</span>
+                  </label>
+                  <Calendar
+                    id="fechaProgramada"
+                    value={formData.fechaProgramada}
+                    onChange={e => handleFieldChange('fechaProgramada', e.value)}
+                    dateFormat="dd/mm/yy"
+                    placeholder="DD/MM/AAAA"
+                    showIcon
+                  />
+                </div>
+                <div className="col-12 md:col-6 mb-3">
+                  <label htmlFor="prioridad" className="block text-sm font-medium mb-1">
+                    Prioridad
+                  </label>
+                  <Dropdown
+                    id="prioridad"
+                    value={formData.prioridad}
+                    onChange={e => handleFieldChange('prioridad', e.value)}
+                    options={PRIORIDADES.map(p => ({ label: p, value: p }))}
+                    placeholder="Seleccione la prioridad"
+                  />
+                </div>
+                <div className="col-12 md:col-6 mb-3">
+                  <label htmlFor="responsableTecnico" className="block text-sm font-medium mb-1">
+                    Técnico responsable <span className="text-red-500">*</span>
+                  </label>
+                  <Dropdown
+                    id="responsableTecnico"
+                    value={formData.responsableTecnico}
+                    onChange={e => handleFieldChange('responsableTecnico', e.value)}
+                    options={TECNICOS_MANTENIMIENTO.map(t => ({ label: t, value: t }))}
+                    placeholder="Seleccione el técnico"
+                    filter
+                  />
+                </div>
+                <div className="col-12 md:col-6 mb-3">
+                  <label htmlFor="creadoPor" className="block text-sm font-medium mb-1">
+                    Creado por
+                  </label>
+                  <InputText
+                    id="creadoPor"
+                    value={formData.creadoPor}
+                    onChange={e => handleFieldChange('creadoPor', e.target.value)}
+                    placeholder="Nombre de quien registra"
+                  />
+                </div>
+                <div className="col-12 mb-3">
+                  <label htmlFor="descripcionTrabajo" className="block text-sm font-medium mb-1">
+                    Descripción del trabajo <span className="text-red-500">*</span>
+                  </label>
+                  <InputTextarea
+                    id="descripcionTrabajo"
+                    rows={3}
+                    value={formData.descripcionTrabajo}
+                    onChange={e => handleFieldChange('descripcionTrabajo', e.target.value)}
+                    placeholder="Describa las actividades de mantenimiento preventivo a realizar..."
+                  />
+                </div>
+                <div className="col-12 mb-3">
+                  <label htmlFor="observaciones" className="block text-sm font-medium mb-1">
+                    Observaciones
+                  </label>
+                  <InputTextarea
+                    id="observaciones"
+                    rows={2}
+                    value={formData.observaciones}
+                    onChange={e => handleFieldChange('observaciones', e.target.value)}
+                    placeholder="Observaciones adicionales..."
+                  />
+                </div>
+              </div>
             </div>
-            <div className="col-12 mb-3">
-              <label htmlFor="descripcionTrabajo" className="block text-sm font-medium mb-1">
-                Descripción del trabajo <span className="text-red-500">*</span>
-              </label>
-              <InputTextarea
-                id="descripcionTrabajo"
-                rows={3}
-                value={formData.descripcionTrabajo}
-                onChange={e => handleFieldChange('descripcionTrabajo', e.target.value)}
-                placeholder="Describa las actividades de mantenimiento preventivo a realizar..."
-              />
-            </div>
-            <div className="col-12 mb-3">
-              <label htmlFor="observaciones" className="block text-sm font-medium mb-1">
-                Observaciones
-              </label>
-              <InputTextarea
-                id="observaciones"
-                rows={2}
-                value={formData.observaciones}
-                onChange={e => handleFieldChange('observaciones', e.target.value)}
-                placeholder="Observaciones adicionales..."
-              />
-            </div>
-          </div>
+          )}
         </div>
       </Dialog>
 
