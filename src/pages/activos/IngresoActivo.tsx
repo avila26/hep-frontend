@@ -16,7 +16,7 @@ export const IngresoActivo: React.FC = () => {
                 Seleccione el método de registro de activos que mejor se adapte a sus necesidades actuales.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                 {/* Individual Card */}
                 <div 
                     onClick={() => setSelectedFlow('individual')}
