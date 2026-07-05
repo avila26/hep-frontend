@@ -1,12 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Activo } from '../context/ActivosContext';
-import {
-    CATALOGOS,
-    CAT_MARCA,
-    COLUMNAS_PLANTILLA,
-    catalogoContieneValor,
-    getMarcasPermitidas
-} from '../constants/activosCatalogos';
+
 import { UBICACIONES_HEP } from '../constants/ubicacionesHep';
 
 export interface ResultadoImportacion {
@@ -145,18 +139,77 @@ export const descargarReporteErrores = (resultados: ResultadoImportacion[]) => {
     XLSX.writeFile(workbook, 'reporte_errores_carga_masiva.xlsx');
 };
 
+const normalizarFilaExcel = (fila: Record<string, unknown>): Record<string, unknown> => {
+    const filaNormalizada: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fila)) {
+        const keyClean = key.toLowerCase()
+            .replace(/[\r\n\t]/g, ' ') // replace newlines/tabs with space
+            .replace(/\s+/g, ' ')      // collapse spaces
+            .trim();
+            
+        if (keyClean.startsWith('no. de acta')) filaNormalizada['No. de Acta'] = value;
+        else if (keyClean.startsWith('no. secuencial')) filaNormalizada['No. Secuencial'] = value;
+        else if (keyClean.startsWith('id bien') || keyClean.startsWith('nombre bien')) filaNormalizada['ID Bien'] = value;
+        else if (keyClean.startsWith('fecha de ingreso')) filaNormalizada['Fecha de ingreso'] = value;
+        else if (keyClean.startsWith('descripción') || keyClean.startsWith('descripcion')) filaNormalizada['Descripción/Características'] = value;
+        else if (keyClean.startsWith('código esbye') || keyClean.startsWith('codigo esbye')) filaNormalizada['Código eSByE'] = value;
+        else if (keyClean === 'estado') filaNormalizada['Estado'] = value;
+        else if (keyClean.startsWith('costo de') || keyClean.startsWith('costo')) filaNormalizada['Costo de Adquisición'] = value;
+        else if (keyClean.startsWith('depreciación') || keyClean.startsWith('depreciacion')) filaNormalizada['Depreciación (S/N)'] = value;
+        else if (keyClean.startsWith('garantía') || keyClean.startsWith('garantia')) filaNormalizada['Garantía (S/N)'] = value;
+        else if (keyClean.startsWith('tiempo de garantía') || keyClean.startsWith('tiempo de garantia')) filaNormalizada['Tiempo de Garantía'] = value;
+        else if (keyClean.startsWith('serie')) filaNormalizada['Serie'] = value;
+        else if (keyClean.startsWith('modelo')) filaNormalizada['Modelo'] = value;
+        else if (keyClean.startsWith('marca')) filaNormalizada['Marca'] = value;
+        else if (keyClean.startsWith('valor contable')) filaNormalizada['Valor Contable'] = value;
+        else if (keyClean.startsWith('valor residual')) filaNormalizada['Valor Residual'] = value;
+        else if (keyClean.startsWith('valor en libros')) filaNormalizada['Valor en Libros'] = value;
+        else if (keyClean.startsWith('valor depreciación acumulada') || keyClean.startsWith('valor depreciacion acumulada')) filaNormalizada['Valor Depreciación Acumulada'] = value;
+        else if (keyClean.startsWith('fecha de la última depreciación') || keyClean.startsWith('fecha de la ultima depreciacion') || keyClean.startsWith('fecha última depreciación') || keyClean.startsWith('fecha ultima depreciacion')) filaNormalizada['Fecha última depreciación'] = value;
+        else if (keyClean.startsWith('vida útil') || keyClean.startsWith('vida util')) filaNormalizada['Vida Útil'] = value;
+        else if (keyClean.startsWith('color')) filaNormalizada['Color'] = value;
+        else if (keyClean.startsWith('material')) filaNormalizada['Material'] = value;
+        else if (keyClean.startsWith('dimensiones') || keyClean.startsWith('dimension')) filaNormalizada['Dimensiones'] = value;
+        else if (keyClean.startsWith('observaciones')) filaNormalizada['Observaciones'] = value;
+        else {
+            filaNormalizada[key] = value;
+        }
+    }
+    return filaNormalizada;
+};
+
 export const leerFilasExcel = async (archivo: File): Promise<Record<string, unknown>[]> => {
     const buffer = await archivo.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-    const sheetName = workbook.SheetNames.includes('Plantilla') ? 'Plantilla' : workbook.SheetNames[0];
+    const sheetName = workbook.SheetNames.includes('2. BIENES MUEBLES') ? '2. BIENES MUEBLES' : workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { range: 5, defval: '' });
+    return rawRows.map(normalizarFilaExcel);
 };
 
-const filaEstaVacia = (fila: Record<string, unknown>): boolean =>
-    COLUMNAS_PLANTILLA.every(columna => celdaVacia(fila[columna]));
 
-const validarFila = (
+
+export const calcularEstadoCarga = (
+    filasExitosas: number,
+    filasConError: number
+): 'COMPLETADO' | 'COMPLETADO_CON_ERRORES' | 'FALLIDO' => {
+    if (filasConError === 0) return 'COMPLETADO';
+    if (filasExitosas > 0 && filasConError > 0) return 'COMPLETADO_CON_ERRORES';
+    return 'FALLIDO';
+};
+
+export const formatearFechaCarga = (fecha: Date): string => formatearFecha(fecha);
+
+export const descargarPlantillaOficial = () => {
+    const link = document.createElement('a');
+    link.href = '/plantilla_ingreso_activos.xlsx';
+    link.download = 'plantilla_ingreso_activos.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+export const validarFilaOficial = (
     fila: Record<string, unknown>,
     numeroFila: number,
     activosExistentes: Activo[],
@@ -166,152 +219,106 @@ const validarFila = (
     const errores: string[] = [];
     const datosFila = { ...fila };
 
-    const nombre = textoCelda(fila.Nombre);
-    const numeroSerie = textoCelda(fila['Número de Serie']);
-    const marca = textoCelda(fila.Marca);
-    const categoriaActivo = textoCelda(fila.Categoría);
-    const origenIngreso = textoCelda(fila['Origen de Ingreso']);
-    const estadoActivo = textoCelda(fila['Estado del Activo']);
-    const bloque = textoCelda(fila.Bloque);
-    const piso = textoCelda(fila.Piso);
-    const servicio = textoCelda(fila.Servicio);
-    const ambiente = textoCelda(fila['Ambiente/Sala']);
-    const fechaAdquisicionRaw = fila['Fecha de Adquisición'];
+    const noActa = textoCelda(fila['No. de Acta']);
+    const idBien = textoCelda(fila['ID Bien']);
+    const fechaIngresoRaw = fila['Fecha de ingreso'];
+    const descripcion = textoCelda(fila['Descripción/Características']);
+    const codigoSbye = textoCelda(fila['Código eSByE']);
+    const estado = textoCelda(fila['Estado']);
+    const costoAdquisicion = parseNumero(fila['Costo de Adquisición']);
+    const depreciacionSN = textoCelda(fila['Depreciación (S/N)']).toUpperCase();
+    const garantiaSN = textoCelda(fila['Garantía (S/N)']).toUpperCase();
+    const tiempoGarantia = textoCelda(fila['Tiempo de Garantía']);
+    const serie = textoCelda(fila['Serie']);
+    const modelo = textoCelda(fila['Modelo']);
+    const marca = textoCelda(fila['Marca']);
+    const valorContable = parseNumero(fila['Valor Contable']);
+    const valorResidual = parseNumero(fila['Valor Residual']);
+    const valorEnLibros = parseNumero(fila['Valor en Libros']);
+    const valorDepreciacionAcumulada = parseNumero(fila['Valor Depreciación Acumulada']);
+    const fechaUltimaDepreciacionRaw = fila['Fecha última depreciación'];
+    const vidaUtil = parseNumero(fila['Vida Útil']);
+    const color = textoCelda(fila['Color']);
+    const material = textoCelda(fila['Material']);
+    const dimensiones = textoCelda(fila['Dimensiones']);
+    const observaciones = textoCelda(fila['Observaciones']);
 
-    if (!nombre) errores.push('El nombre es obligatorio');
+    if (!idBien) {
+        errores.push('El campo "ID Bien" es obligatorio');
+    }
 
-    if (!numeroSerie) {
-        errores.push('El número de serie es obligatorio');
+    // No. Secuencial es opcional (se calcula a partir del índice de fila si no existe)
+
+    const fechaIngreso = parseFecha(fechaIngresoRaw);
+    if (!fechaIngresoRaw || celdaVacia(fechaIngresoRaw)) {
+        errores.push('El campo "Fecha de ingreso" es obligatorio');
+    } else if (!fechaIngreso) {
+        errores.push('El campo "Fecha de ingreso" no tiene un formato válido (dd/mm/aaaa)');
+    } else if (fechaIngreso > new Date()) {
+        errores.push('El campo "Fecha de ingreso" no puede ser futura');
+    }
+
+    if (!estado) {
+        errores.push('El campo "Estado" es obligatorio');
     } else {
-        const serieNormalizada = numeroSerie.toLowerCase();
-        if (seriesEnArchivo.has(serieNormalizada)) {
+        const estNorm = estado.toLowerCase();
+        if (estNorm !== 'bueno' && estNorm !== 'regular' && estNorm !== 'malo' &&
+            estNorm !== 'bue' && estNorm !== 'reg' && estNorm !== 'mal') {
+            errores.push('El campo "Estado" debe ser Bueno, Regular o Malo');
+        }
+    }
+
+    if (costoAdquisicion === null || costoAdquisicion < 0) {
+        errores.push('El campo "Costo de Adquisición" es obligatorio y debe ser un número mayor o igual a 0');
+    }
+
+    const dSN = depreciacionSN.trim();
+    if (!dSN || (dSN !== 'S' && dSN !== 'N' && dSN !== 'SI' && dSN !== 'NO' && dSN !== 'SÍ')) {
+        errores.push('El campo "Depreciación (S/N)" debe ser "S" o "N"');
+    }
+
+    const gSN = garantiaSN.trim();
+    if (!gSN || (gSN !== 'S' && gSN !== 'N' && gSN !== 'SI' && gSN !== 'NO' && gSN !== 'SÍ')) {
+        errores.push('El campo "Garantía (S/N)" debe ser "S" o "N"');
+    } else if ((gSN === 'S' || gSN === 'SI' || gSN === 'SÍ') && !tiempoGarantia) {
+        errores.push('El campo "Tiempo de Garantía" es obligatorio si tiene garantía');
+    }
+
+    if (!serie) {
+        errores.push('El campo "Serie" es obligatorio');
+    } else {
+        const serieNorm = serie.toLowerCase();
+        if (seriesEnArchivo.has(serieNorm)) {
             errores.push('El número de serie está duplicado en el archivo');
-        } else if (activosExistentes.some(activo => activo.numeroSerie.toLowerCase() === serieNormalizada)) {
+        } else if (activosExistentes.some(a => a.numeroSerie.toLowerCase() === serieNorm)) {
             errores.push('El número de serie ya existe en el sistema');
         }
     }
 
     if (!marca) {
-        errores.push('La marca es obligatoria');
-    } else if (categoriaActivo) {
-        const marcasPermitidas = getMarcasPermitidas(categoriaActivo);
-        if (!marcasPermitidas.includes(marca)) {
-            errores.push(`La marca "${marca}" no es válida para la categoría indicada`);
-        }
-    } else if (!Object.values(CAT_MARCA).includes(marca)) {
-        errores.push(`La marca "${marca}" no existe en el catálogo`);
+        errores.push('El campo "Marca" es obligatorio');
     }
 
-    if (!categoriaActivo) {
-        errores.push('La categoría es obligatoria');
-    } else if (!catalogoContieneValor(CATALOGOS.categoriaActivo, categoriaActivo)) {
-        errores.push(`La categoría "${categoriaActivo}" no es válida`);
+    if (valorContable !== null && valorContable < 0) {
+        errores.push('El campo "Valor Contable" debe ser mayor o igual a 0');
+    }
+    if (valorResidual !== null && valorResidual < 0) {
+        errores.push('El campo "Valor Residual" debe ser mayor o igual a 0');
+    }
+    if (valorEnLibros !== null && valorEnLibros < 0) {
+        errores.push('El campo "Valor en Libros" debe ser mayor o igual a 0');
+    }
+    if (valorDepreciacionAcumulada !== null && valorDepreciacionAcumulada < 0) {
+        errores.push('El campo "Valor Depreciación Acumulada" debe ser mayor o igual a 0');
     }
 
-    if (!origenIngreso) {
-        errores.push('El origen de ingreso es obligatorio');
-    } else if (!catalogoContieneValor(CATALOGOS.origenIngreso, origenIngreso)) {
-        errores.push(`El origen de ingreso "${origenIngreso}" no es válido`);
+    const fechaUltimaDepreciacion = parseFecha(fechaUltimaDepreciacionRaw);
+    if (fechaUltimaDepreciacionRaw && !celdaVacia(fechaUltimaDepreciacionRaw) && !fechaUltimaDepreciacion) {
+        errores.push('El campo "Fecha última depreciación" no tiene un formato válido (dd/mm/aaaa)');
     }
 
-    if (!estadoActivo) {
-        errores.push('El estado del activo es obligatorio');
-    } else if (!catalogoContieneValor(CATALOGOS.estadoActivo, estadoActivo)) {
-        errores.push(`El estado del activo "${estadoActivo}" no es válido (use BUE, REG o MAL)`);
-    }
-
-    const ubicacion = resolverUbicacion(bloque, piso, servicio, ambiente);
-    if (!ubicacion) {
-        errores.push('La combinación Bloque/Piso/Servicio/Ambiente no es válida');
-    }
-
-    const fechaAdquisicion = parseFecha(fechaAdquisicionRaw);
-    if (!fechaAdquisicionRaw || celdaVacia(fechaAdquisicionRaw)) {
-        errores.push('La fecha de adquisición es obligatoria');
-    } else if (!fechaAdquisicion) {
-        errores.push('La fecha de adquisición no tiene un formato válido (use dd/mm/aaaa)');
-    } else if (fechaAdquisicion > new Date()) {
-        errores.push('La fecha de adquisición no puede ser futura');
-    }
-
-    const color = textoCelda(fila.Color);
-    if (color && !catalogoContieneValor(CATALOGOS.color, color)) {
-        errores.push(`El color "${color}" no es válido`);
-    }
-
-    const motivoIngreso = textoCelda(fila['Motivo de Ingreso']);
-    if (motivoIngreso && !catalogoContieneValor(CATALOGOS.motivoIngreso, motivoIngreso)) {
-        errores.push(`El motivo de ingreso "${motivoIngreso}" no es válido`);
-    }
-
-    const unidadMedida = textoCelda(fila['Unidad de Medida']);
-    if (unidadMedida && !catalogoContieneValor(CATALOGOS.unidadMedida, unidadMedida)) {
-        errores.push(`La unidad de medida "${unidadMedida}" no es válida`);
-    }
-
-    const condicionDepreciacion = textoCelda(fila['Condición de Depreciación']);
-    if (condicionDepreciacion && !catalogoContieneValor(CATALOGOS.condicionDepreciacion, condicionDepreciacion)) {
-        errores.push(`La condición de depreciación "${condicionDepreciacion}" no es válida`);
-    }
-
-    const valorAdquisicionRaw = fila['Valor de Adquisición'];
-    if (!celdaVacia(valorAdquisicionRaw)) {
-        const valorAdquisicion = parseNumero(valorAdquisicionRaw);
-        if (valorAdquisicion === null || valorAdquisicion < 0) {
-            errores.push('El valor de adquisición debe ser un número mayor o igual a 0');
-        }
-    }
-
-    const valorUnitarioRaw = fila['Valor Unitario'];
-    let valorUnitario: number | null = null;
-    if (!celdaVacia(valorUnitarioRaw)) {
-        valorUnitario = parseNumero(valorUnitarioRaw);
-        if (valorUnitario === null || valorUnitario < 0) {
-            errores.push('El valor unitario debe ser un número mayor o igual a 0');
-        }
-    }
-
-    const tiempoVidaUtilRaw = fila['Tiempo de Vida Útil (años)'];
-    if (!celdaVacia(tiempoVidaUtilRaw)) {
-        const tiempoVidaUtil = parseNumero(tiempoVidaUtilRaw);
-        if (tiempoVidaUtil === null || tiempoVidaUtil < 0 || !Number.isInteger(tiempoVidaUtil)) {
-            errores.push('El tiempo de vida útil debe ser un número entero mayor o igual a 0');
-        }
-    }
-
-    const fechaDnsRaw = fila['Fecha DNS'];
-    if (!celdaVacia(fechaDnsRaw) && !parseFecha(fechaDnsRaw)) {
-        errores.push('La fecha DNS no tiene un formato válido (use dd/mm/aaaa)');
-    }
-
-    // Cobertura por Proveedor
-    const tieneCoberturaProveedorRaw = textoCelda(fila.tiene_cobertura_proveedor).toLowerCase();
-    const tieneCoberturaProveedor = tieneCoberturaProveedorRaw === 'sí' || tieneCoberturaProveedorRaw === 'si' || tieneCoberturaProveedorRaw === 'true' || tieneCoberturaProveedorRaw === 'yes';
-    const nombreProveedor = tieneCoberturaProveedor ? textoCelda(fila.nombre_proveedor) : '';
-    const fechaInicioCobertura = tieneCoberturaProveedor ? parseFecha(fila.fecha_inicio_cobertura) : null;
-    const fechaFinCobertura = tieneCoberturaProveedor ? parseFecha(fila.fecha_fin_cobertura) : null;
-
-    if (tieneCoberturaProveedorRaw && tieneCoberturaProveedorRaw !== 'sí' && tieneCoberturaProveedorRaw !== 'si' && tieneCoberturaProveedorRaw !== 'no' && tieneCoberturaProveedorRaw !== 'false' && tieneCoberturaProveedorRaw !== 'true') {
-        errores.push('El campo tiene_cobertura_proveedor debe ser "Sí" o "No"');
-    }
-
-    if (tieneCoberturaProveedor) {
-        if (!nombreProveedor) {
-            errores.push('El nombre del proveedor es obligatorio si tiene cobertura');
-        }
-        if (!fila.fecha_inicio_cobertura || celdaVacia(fila.fecha_inicio_cobertura)) {
-            errores.push('La fecha de inicio de cobertura es obligatoria si tiene cobertura');
-        } else if (!fechaInicioCobertura) {
-            errores.push('La fecha de inicio de cobertura no tiene un formato válido (use dd/mm/aaaa)');
-        }
-        if (!fila.fecha_fin_cobertura || celdaVacia(fila.fecha_fin_cobertura)) {
-            errores.push('La fecha de fin de cobertura es obligatoria si tiene cobertura');
-        } else if (!fechaFinCobertura) {
-            errores.push('La fecha de fin de cobertura no tiene un formato válido (use dd/mm/aaaa)');
-        }
-        if (fechaInicioCobertura && fechaFinCobertura && fechaFinCobertura <= fechaInicioCobertura) {
-            errores.push('La fecha de fin de cobertura debe ser posterior a la de inicio');
-        }
+    if (vidaUtil !== null && (vidaUtil < 0 || !Number.isInteger(vidaUtil))) {
+        errores.push('El campo "Vida Útil" debe ser un número entero mayor o igual a 0');
     }
 
     if (errores.length > 0) {
@@ -323,46 +330,61 @@ const validarFila = (
         };
     }
 
-    const valorAdquisicion = parseNumero(valorAdquisicionRaw);
-    const tiempoVidaUtil = parseNumero(tiempoVidaUtilRaw);
-    const fechaDns = parseFecha(fechaDnsRaw);
+    // Mapear estado
+    let estadoActivo = 'BUE';
+    if (estado.toLowerCase().startsWith('reg')) estadoActivo = 'REG';
+    if (estado.toLowerCase().startsWith('mal')) estadoActivo = 'MAL';
+
+    // Mapear depreciacion y garantia
+
+    const tieneGarantia = (garantiaSN === 'S' || garantiaSN === 'SI' || garantiaSN === 'SÍ');
+
     const activosParaCodigo = [...activosExistentes, ...activosAcumulados];
+    const codigoInstitucional = generateCodigoInstitucional(activosParaCodigo);
+
+    // Mapear marca
+    const marcaNormalizada = marca;
 
     const activo: Omit<Activo, 'idActivo'> = {
-        codigoInstitucional: generateCodigoInstitucional(activosParaCodigo),
-        nombre,
-        numeroSerie,
-        descripcion: textoCelda(fila.Descripción),
-        modelo: textoCelda(fila.Modelo),
-        material: textoCelda(fila.Material),
-        fechaAdquisicion,
-        responsableEntrega: textoCelda(fila['Responsable de Entrega']),
-        dimension: textoCelda(fila.Dimensión),
-        numeroContrato: textoCelda(fila['Número de Contrato']),
-        valorAdquisicion,
-        valorUnitario,
-        valorTotal: valorUnitario,
-        codigoSBYE: textoCelda(fila['Código SBYE']),
-        fechaDNS: fechaDns ? fechaDns.toISOString() : '',
-        tiempoVidaUtil: tiempoVidaUtil !== null ? Math.trunc(tiempoVidaUtil) : null,
+        codigoInstitucional,
+        nombre: idBien,
+        numeroSerie: serie,
+        descripcion: descripcion || observaciones || '',
+        modelo: modelo || '',
+        material: material || '',
+        fechaAdquisicion: fechaIngreso,
+        responsableEntrega: '',
+        dimension: dimensiones || '',
+        numeroContrato: '',
+        valorAdquisicion: costoAdquisicion,
+        valorUnitario: costoAdquisicion,
+        valorTotal: costoAdquisicion,
+        codigoSBYE: codigoSbye,
+        fechaDNS: '',
+        tiempoVidaUtil: vidaUtil !== null ? Math.trunc(vidaUtil) : null,
         bloqueado: false,
-        administradorDelProceso: textoCelda(fila['Administrador del Proceso']),
-        itemPresupuestario: textoCelda(fila['Item Presupuestario']),
-        partidaPresupuestaria: textoCelda(fila['Partida Presupuestaria']),
-        numeroActa: textoCelda(fila['Número de Acta']),
-        marca,
-        color,
-        categoriaActivo,
-        origenIngreso,
-        motivoIngreso,
-        unidadMedida,
+        administradorDelProceso: '',
+        itemPresupuestario: '',
+        partidaPresupuestaria: '',
+        numeroActa: noActa,
+        marca: marcaNormalizada,
+        color: color || '',
         estadoActivo,
-        condicionDepreciacion,
-        ubicacion: ubicacion!,
-        tieneCoberturaProveedor,
-        nombreProveedor,
-        fechaInicioCobertura: fechaInicioCobertura ?? null,
-        fechaFinCobertura: fechaFinCobertura ?? null
+        ubicacion: 'Bodega',
+        tieneCoberturaProveedor: false,
+        nombreProveedor: '',
+        fechaInicioCobertura: null,
+        fechaFinCobertura: null,
+        
+        depreciacionS_N: depreciacionSN,
+        tieneGarantia,
+        tiempoGarantia: tiempoGarantia || null,
+        valorContable,
+        valorResidual,
+        valorEnLibros,
+        valorDepreciacionAcumulada,
+        fechaUltimaDepreciacion,
+        observaciones
     };
 
     return {
@@ -373,7 +395,7 @@ const validarFila = (
     };
 };
 
-export const validarArchivoExcel = (
+export const validarArchivoExcelOficial = (
     filas: Record<string, unknown>[],
     activosExistentes: Activo[]
 ): { resultados: ResultadoImportacion[]; activosValidos: Omit<Activo, 'idActivo'>[] } => {
@@ -383,10 +405,11 @@ export const validarArchivoExcel = (
     const activosAcumulados: Activo[] = [];
 
     filas.forEach((fila, index) => {
-        if (filaEstaVacia(fila)) return;
+        const vacia = Object.values(fila).every(v => v === null || v === undefined || String(v).trim() === '');
+        if (vacia) return;
 
         const numeroFila = index + 2;
-        const resultado = validarFila(fila, numeroFila, activosExistentes, seriesEnArchivo, activosAcumulados);
+        const resultado = validarFilaOficial(fila, numeroFila, activosExistentes, seriesEnArchivo, activosAcumulados);
         resultados.push(resultado);
 
         if (resultado.exitoso && resultado.activo) {
@@ -402,13 +425,3 @@ export const validarArchivoExcel = (
     return { resultados, activosValidos };
 };
 
-export const calcularEstadoCarga = (
-    filasExitosas: number,
-    filasConError: number
-): 'COMPLETADO' | 'COMPLETADO_CON_ERRORES' | 'FALLIDO' => {
-    if (filasConError === 0) return 'COMPLETADO';
-    if (filasExitosas > 0 && filasConError > 0) return 'COMPLETADO_CON_ERRORES';
-    return 'FALLIDO';
-};
-
-export const formatearFechaCarga = (fecha: Date): string => formatearFecha(fecha);

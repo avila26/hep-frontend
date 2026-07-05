@@ -137,7 +137,7 @@ const Correctivos: React.FC = () => {
         ...prev,
         codigoActivo: codigoInst,
         nombreActivo: seleccionado.nombre,
-        categoria: seleccionado.categoriaActivo || 'Sin Categoría',
+        categoria: (seleccionado as any).categoriaActivo || 'Sin Categoría',
         ubicacion: seleccionado.ubicacion || 'Sin Ubicación',
         responsableCustodia: seleccionado.responsableEntrega || 'Sin Custodio'
       }));

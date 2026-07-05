@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -298,7 +298,7 @@ const Catalogos: React.FC = () => {
         setActiveTabIndex(e.index);
         setGlobalFilter('');
       }}>
-        {TIPOS_CATALOGO.map((item, index) => (
+        {TIPOS_CATALOGO.map((item) => (
           <TabPanel
             key={item.tipo}
             header={

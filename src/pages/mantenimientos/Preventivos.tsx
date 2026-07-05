@@ -120,7 +120,7 @@ const Preventivos: React.FC = () => {
 
   const matchCategoria = (a: Activo) => {
     if (!filtros.categoria) return true;
-    return a.categoriaActivo === filtros.categoria;
+    return (a as any).categoriaActivo === filtros.categoria;
   };
 
   const matchUbicacion = (a: Activo) => {
@@ -134,7 +134,7 @@ const Preventivos: React.FC = () => {
 
   // Opciones de filtros
   const categoriasOptions = Array.from(
-    new Set(activosList.map(a => a.categoriaActivo).filter(Boolean))
+    new Set(activosList.map(a => (a as any).categoriaActivo).filter(Boolean))
   ).map(cat => ({ label: cat, value: cat }));
 
   const ubicacionesOptions = Array.from(
@@ -283,7 +283,7 @@ const Preventivos: React.FC = () => {
       agregarMantenimiento({
         codigoActivo: activo.codigoInstitucional,
         nombreActivo: activo.nombre,
-        categoria: activo.categoriaActivo || 'Sin Categoría',
+        categoria: (activo as any).categoriaActivo || 'Sin Categoría',
         ubicacion: activo.ubicacion || 'Sin Ubicación',
         responsableTecnico: formData.responsableTecnico,
         responsableCustodia: activo.responsableEntrega || 'Sin Custodio',
@@ -676,7 +676,7 @@ const Preventivos: React.FC = () => {
                             {a.nombre}
                           </span>
                           <span className="text-slate-600 dark:text-slate-400 text-xs" style={{ flex: 1.2 }}>
-                            {a.categoriaActivo || '—'}
+                            {(a as any).categoriaActivo || '—'}
                           </span>
                           <span className="text-slate-600 dark:text-slate-400 text-xs" style={{ flex: 1.2 }}>
                             {a.ubicacion || '—'}

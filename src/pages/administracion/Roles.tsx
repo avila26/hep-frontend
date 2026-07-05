@@ -1,6 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
@@ -25,12 +23,7 @@ const MODULOS_SISTEMA: { key: PermisoModulo['modulo']; label: string; icon: stri
   { key: 'Administracion', label: 'Administración', icon: 'pi-cog' }
 ];
 
-const ACCIONES_PERMISO: { key: keyof Omit<PermisoModulo, 'modulo'>; label: string }[] = [
-  { key: 'ver', label: 'Ver' },
-  { key: 'crear', label: 'Crear' },
-  { key: 'editar', label: 'Editar' },
-  { key: 'eliminar', label: 'Eliminar' }
-];
+
 
 /* ------------------------------------------------------------------ */
 /*  Funciones Auxiliares                                              */

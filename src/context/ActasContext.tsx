@@ -346,12 +346,7 @@ export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         numeroActa: acta.referencia,
                         marca: linea.marca,
                         color: linea.color || '',
-                        categoriaActivo: linea.moduloDestino,
-                        origenIngreso: linea.origenIngreso,
-                        motivoIngreso: linea.motivoIngreso,
-                        unidadMedida: linea.unidadMedida,
                         estadoActivo: linea.estadoLlegada === 'Bueno' ? 'Bueno' : linea.estadoLlegada === 'Regular' ? 'Regular' : 'Malo', // Match exact strings in RegistrarActivo.tsx catalog or database mapping if BUE/REG/MAL
-                        condicionDepreciacion: linea.condicionDepreciacion,
                         ubicacion: serie.ubicacion || '',
                         atributosEspecificos: linea.atributosEspecificos || null,
                         // Campos del acta

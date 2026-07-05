@@ -715,7 +715,7 @@ const Usuarios: React.FC = () => {
               severity={
                 nuevoEstado === 'Activo' ? 'success' :
                 nuevoEstado === 'Inactivo' ? 'secondary' :
-                nuevoEstado === 'Bloqueado' ? 'danger' : 'primary'
+                nuevoEstado === 'Bloqueado' ? 'danger' : undefined
               }
               disabled={nuevoEstado === null || nuevoEstado === selectedItem?.estado}
               onClick={() => {

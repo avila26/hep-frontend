@@ -156,7 +156,7 @@ const ReporteDepreciacion: React.FC = () => {
   // Extraer categorías disponibles
   const categoriasDisponibles = useMemo(() => {
     const cats = Array.from(
-      new Set(activosConDepreciacion.map(a => a.categoriaActivo).filter(Boolean))
+      new Set(activosConDepreciacion.map(a => (a as any).categoriaActivo).filter(Boolean))
     );
     return [
       FILTRO_CATEGORIA_DEFAULT,
@@ -168,7 +168,7 @@ const ReporteDepreciacion: React.FC = () => {
   const resultados = useMemo(() => {
     return activosConDepreciacion.filter(a => {
       // 1. Categoría
-      if (filtroCategoria && a.categoriaActivo !== filtroCategoria) {
+      if (filtroCategoria && (a as any).categoriaActivo !== filtroCategoria) {
         return false;
       }
       // 2. Estado Depreciación
@@ -188,7 +188,7 @@ const ReporteDepreciacion: React.FC = () => {
         const query = globalFilter.toLowerCase().trim();
         const cod = (a.codigoInstitucional || '').toLowerCase();
         const nom = (a.nombre || '').toLowerCase();
-        const cat = (a.categoriaActivo || '').toLowerCase();
+        const cat = ((a as any).categoriaActivo || '').toLowerCase();
         if (!cod.includes(query) && !nom.includes(query) && !cat.includes(query)) {
           return false;
         }
@@ -236,7 +236,7 @@ const ReporteDepreciacion: React.FC = () => {
     return data.map(row => ({
       'Código': row.codigoInstitucional,
       'Nombre': row.nombre,
-      'Categoría': row.categoriaActivo,
+      'Categoría': (row as any).categoriaActivo || 'Activo Fijo',
       'Fecha Adquisición': formatDate(row.fechaAdquisicion),
       'Valor Adquisición': formatCurrency(row.valorAdquisicion),
       'Vida Útil (años)': row.tiempoVidaUtil ?? '—',
@@ -330,7 +330,7 @@ const ReporteDepreciacion: React.FC = () => {
     const body = data.map(row => [
       row.codigoInstitucional,
       row.nombre,
-      row.categoriaActivo,
+      (row as any).categoriaActivo || 'Activo Fijo',
       formatDate(row.fechaAdquisicion),
       formatCurrency(row.valorAdquisicion),
       row.tiempoVidaUtil ? `${row.tiempoVidaUtil} años` : '—',
@@ -631,7 +631,7 @@ const ReporteDepreciacion: React.FC = () => {
           <Column selectionMode="multiple" style={{ width: '3rem' }} />
           <Column field="codigoInstitucional" header="Código" sortable style={{ minWidth: '10rem' }} />
           <Column field="nombre" header="Nombre" sortable style={{ minWidth: '15rem' }} />
-          <Column field="categoriaActivo" header="Categoría" sortable style={{ minWidth: '12rem' }} />
+          <Column field="categoriaActivo" header="Categoría" body={row => (row as any).categoriaActivo || 'Activo Fijo'} sortable style={{ minWidth: '12rem' }} />
           <Column
             field="fechaAdquisicion"
             header="Fecha adquisición"

@@ -12,8 +12,6 @@ import { Toolbar } from 'primereact/toolbar';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { Card } from 'primereact/card';
-import { Divider } from 'primereact/divider';
-import { Timeline } from 'primereact/timeline';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';

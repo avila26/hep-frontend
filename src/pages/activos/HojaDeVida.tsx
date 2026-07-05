@@ -132,8 +132,8 @@ export const HojaDeVida: React.FC = () => {
                     <p><strong>Fecha de Adquisición:</strong> {activo.fechaAdquisicion ? new Date(activo.fechaAdquisicion).toLocaleDateString('es-ES') : '—'}</p>
                     <p><strong>Ubicación de Registro:</strong> {activo.ubicacion || '—'}</p>
                     <p><strong>Custodio Inicial:</strong> {activo.responsableEntrega || '—'}</p>
-                    <p><strong>Origen de Ingreso:</strong> {activo.origenIngreso || '—'}</p>
-                    <p><strong>Motivo de Ingreso:</strong> {activo.motivoIngreso || '—'}</p>
+                    <p><strong>Origen de Ingreso:</strong> {(activo as any).origenIngreso || '—'}</p>
+                    <p><strong>Motivo de Ingreso:</strong> {(activo as any).motivoIngreso || '—'}</p>
                     {activo.valorAdquisicion !== null && (
                         <p><strong>Valor de Adquisición:</strong> ${new Intl.NumberFormat('es-ES').format(activo.valorAdquisicion)} USD</p>
                     )}
@@ -360,7 +360,7 @@ export const HojaDeVida: React.FC = () => {
                     <div>
                         <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Categoría</div>
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/50 rounded p-2 border border-slate-100 dark:border-slate-800">
-                            {activo.categoriaActivo || '—'}
+                            {(activo as any).categoriaActivo || 'Activo Fijo'}
                         </div>
                     </div>
                     <div>
@@ -519,7 +519,7 @@ export const HojaDeVida: React.FC = () => {
 
             {/* Ficha Técnica Específica */}
             {activo.atributosEspecificos && (() => {
-                const key = getEspecificoKey(activo.categoriaActivo, activo.nombre);
+                const key = getEspecificoKey((activo as any).categoriaActivo || '', activo.nombre);
                 if (!key) return null;
                 return (
                     <Card className="shadow-lg mb-6 border border-slate-100 dark:border-slate-800">

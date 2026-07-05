@@ -94,18 +94,7 @@ export const ConsultarActivos: React.FC = () => {
     const [filterActa, setFilterActa] = useState('');
     const [filterResponsable, setFilterResponsable] = useState('');
     const [filterContrato, setFilterContrato] = useState('');
-    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
     const [filterEstado, setFilterEstado] = useState<string | null>(null);
-
-    // Obtener categorías únicas presentes en la base de datos
-    const categoriasUnicas = React.useMemo(() => {
-        const cats = activos.map(activo => activo.categoriaActivo).filter(Boolean);
-        return Array.from(new Set(cats)).sort();
-    }, [activos]);
-
-    const categoriaOptions = React.useMemo(() => {
-        return categoriasUnicas.map(cat => ({ label: cat, value: cat }));
-    }, [categoriasUnicas]);
 
     // Opciones estáticas del catálogo de estados
     const estadoOptions = [
@@ -124,7 +113,6 @@ export const ConsultarActivos: React.FC = () => {
         setFilterActa('');
         setFilterResponsable('');
         setFilterContrato('');
-        setFilterCategoria(null);
         setFilterEstado(null);
     };
 
@@ -165,12 +153,7 @@ export const ConsultarActivos: React.FC = () => {
             }
         }
 
-        // Categoría (categoriaActivo)
-        if (filterCategoria) {
-            if (activo.categoriaActivo !== filterCategoria) {
-                return false;
-            }
-        }
+        // Categoría (obsoleto)
 
         // Estado (estadoActivo)
         if (filterEstado) {
@@ -320,18 +303,7 @@ export const ConsultarActivos: React.FC = () => {
                         />
                     </div>
 
-                    {/* Categoría */}
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Categoría</label>
-                        <Dropdown
-                            value={filterCategoria}
-                            options={categoriaOptions}
-                            onChange={(e: DropdownChangeEvent) => setFilterCategoria(e.value)}
-                            placeholder="Todas las categorías"
-                            showClear
-                            className="w-full text-sm"
-                        />
-                    </div>
+                    {/* Categoría (obsoleto) */}
 
                     {/* Estado */}
                     <div>
@@ -371,7 +343,7 @@ export const ConsultarActivos: React.FC = () => {
                         <Column field="numeroSerie" header="Número de Serie" />
                         <Column field="codigoInstitucional" header="Código Institucional" />
                         <Column field="marca" header="Marca" />
-                        <Column field="categoriaActivo" header="Categoría" />
+                        {/* Categoría columna eliminada */}
                         <Column
                             field="fechaAdquisicion"
                             header="Fecha Adquisición"
@@ -491,23 +463,7 @@ export const ConsultarActivos: React.FC = () => {
                         <section className="mb-5">
                             <h3 className="text-sm uppercase tracking-normal text-slate-700 font-bold mb-2 border-b border-slate-200 pb-2">Clasificación</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
-                                <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Categoría</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.categoriaActivo || '-'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Origen de Ingreso</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.origenIngreso || '-'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Motivo de Ingreso</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.motivoIngreso || '-'}</div>
-                                </div>
-
-                                <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Unidad de Medida</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.unidadMedida || '-'}</div>
-                                </div>
+                                {/* Clasificaciones antiguas omitidas */}
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Estado</div>
                                     <div className="mt-1">
@@ -523,7 +479,7 @@ export const ConsultarActivos: React.FC = () => {
                                 </div>
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Condición de Depreciación</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.condicionDepreciacion || '-'}</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).condicionDepreciacion || '-'}</div>
                                 </div>
                             </div>
                         </section>
@@ -582,7 +538,19 @@ export const ConsultarActivos: React.FC = () => {
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tiempoVidaUtil ?? '-'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2    ">Bloqueado</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Proveedor</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.nombreProveedor || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">RUC Proveedor</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.rucProveedor || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Garantía</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tieneGarantia ? `Sí (${selectedActivo.tiempoGarantia || 'Tiempo no especificado'})` : 'No'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Bloqueado</div>
                                     <div className="mt-1">
                                         {selectedActivo.bloqueado ? (
                                             <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-semibold rounded">Sí</span>
@@ -596,7 +564,7 @@ export const ConsultarActivos: React.FC = () => {
 
                         {/* SECCIÓN 6: Ficha Técnica Específica */}
                         {selectedActivo.atributosEspecificos && (() => {
-                            const key = getEspecificoKey(selectedActivo.categoriaActivo, selectedActivo.nombre);
+                            const key = getEspecificoKey((selectedActivo as any).categoriaActivo || '', selectedActivo.nombre);
                             if (!key) return null;
                             return (
                                 <section className="mb-5">

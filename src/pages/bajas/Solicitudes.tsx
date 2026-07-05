@@ -139,7 +139,7 @@ const Solicitudes: React.FC = () => {
     const nuevoBien: BienEnInforme = {
       codigoActivo: seleccionado.codigoInstitucional,
       nombreActivo: seleccionado.nombre,
-      categoria: seleccionado.categoriaActivo || 'Sin Categoría',
+      categoria: (seleccionado as any).categoriaActivo || 'Sin Categoría',
       ubicacion: seleccionado.ubicacion || 'Sin Ubicación',
       custodioActual: seleccionado.responsableEntrega || 'Sin Custodio'
     };

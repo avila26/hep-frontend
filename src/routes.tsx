@@ -10,9 +10,7 @@ import RegistrarTraslado from './pages/traslados/RegistrarTraslado';
 import PendientesTraslados from './pages/traslados/Pendientes';
 import EjecutadosTraslados from './pages/traslados/Ejecutados';
 import HistorialTraslados from './pages/traslados/Historial';
-import RegistrarActivo from './pages/activos/RegistrarActivo';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
-import CargaMasiva from './pages/activos/CargaMasiva';
 import HojaDeVida from './pages/activos/HojaDeVida';
 import RegistrarActa from './pages/activos/RegistrarActa';
 import ConsultarActas from './pages/activos/ConsultarActas';
@@ -73,10 +71,8 @@ export const routes: RouteObject[] = [
                 path: 'activos',
                 children: [
                     { index: true, element: <PlaceholderPage title="Activos" /> },
-                    { path: 'ingresar', element: <IngresoActivo /> },
-                    { path: 'registrar', element: <RegistrarActivo /> },
-                    { path: 'consultar', element: <ConsultarActivos /> },
-                    { path: 'carga-masiva', element: <CargaMasiva /> },
+                    {path: 'ingresar', element: <IngresoActivo />},
+                    {path: 'consultar', element: <ConsultarActivos />},
                     { path: 'codigo-barras', element: <PlaceholderPage title="Código de Barras" /> },
                     { path: 'hoja-vida', element: <HojaDeVida /> },
                     { path: 'hoja-vida/:idActivo', element: <HojaDeVida /> },

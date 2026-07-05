@@ -96,7 +96,7 @@ const ReporteActivos: React.FC = () => {
     return data.map(row => ({
       'Código': row.codigoInstitucional,
       'Nombre': row.nombre,
-      'Categoría': row.categoriaActivo,
+      'Categoría': (row as any).categoriaActivo || 'Activo Fijo',
       'Marca': row.marca,
       'Modelo': row.modelo,
       'N° Serie': row.numeroSerie,
@@ -171,7 +171,7 @@ const ReporteActivos: React.FC = () => {
     const body = data.map(row => [
       row.codigoInstitucional,
       row.nombre,
-      row.categoriaActivo,
+      (row as any).categoriaActivo || 'Activo Fijo',
       row.numeroActa || '—',
       row.numeroContrato || '—',
       row.responsableEntrega,
@@ -341,7 +341,7 @@ const ReporteActivos: React.FC = () => {
             <Column selectionMode="multiple" style={{ width: '3rem' }} />
             <Column field="codigoInstitucional" header="Código" sortable style={{ minWidth: '130px' }} />
             <Column field="nombre" header="Nombre" sortable style={{ minWidth: '160px' }} />
-            <Column field="categoriaActivo" header="Categoría" sortable style={{ minWidth: '150px' }} />
+            <Column field="categoriaActivo" header="Categoría" body={row => (row as any).categoriaActivo || 'Activo Fijo'} sortable style={{ minWidth: '150px' }} />
             <Column
               field="numeroActa"
               header="N° Acta"
@@ -471,7 +471,7 @@ const ReporteActivos: React.FC = () => {
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Categoría
               </span>
-              <span className="text-sm font-medium text-slate-800">{selectedItem.categoriaActivo || '—'}</span>
+              <span className="text-sm font-medium text-slate-800">{(selectedItem as any).categoriaActivo || 'Activo Fijo'}</span>
             </div>
             <div className="col-12 md:col-6 mb-2">
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
@@ -550,7 +550,7 @@ const ReporteActivos: React.FC = () => {
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Condición Depreciación
               </span>
-              <span className="text-sm font-medium text-slate-800">{selectedItem.condicionDepreciacion || '—'}</span>
+               <span className="text-sm font-medium text-slate-800">{(selectedItem as any).condicionDepreciacion || '—'}</span>
             </div>
             <div className="col-12 md:col-4 mb-2">
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
@@ -567,13 +567,13 @@ const ReporteActivos: React.FC = () => {
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Origen Ingreso
               </span>
-              <span className="text-sm font-medium text-slate-800">{selectedItem.origenIngreso || '—'}</span>
+               <span className="text-sm font-medium text-slate-800">{(selectedItem as any).origenIngreso || '—'}</span>
             </div>
             <div className="col-12 md:col-6 mb-2">
               <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Motivo Ingreso
               </span>
-              <span className="text-sm font-medium text-slate-800">{selectedItem.motivoIngreso || '—'}</span>
+               <span className="text-sm font-medium text-slate-800">{(selectedItem as any).motivoIngreso || '—'}</span>
             </div>
           </div>
         )}

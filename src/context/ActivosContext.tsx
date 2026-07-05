@@ -272,12 +272,7 @@ export interface Activo {
     numeroActa: string;
     marca: string;
     color: string;
-    categoriaActivo: string;
-    origenIngreso: string;
-    motivoIngreso: string;
-    unidadMedida: string;
     estadoActivo: string;
-    condicionDepreciacion: string;
     ubicacion: string;
     atributosEspecificos?: AtributosEquipoBiomedico | AtributosEquipoInformatico | AtributosCPU | AtributosMonitor | AtributosTeclado | AtributosMouse | AtributosImpresoraRed | AtributosTelefonoIp | AtributosCCTV | AtributosAccessPoint | AtributosLaboratorio | AtributosRayosImagen | null;
     // ─── Campos del Acta de Ingreso (se heredan del acta al cerrarla) ───
@@ -286,11 +281,26 @@ export interface Activo {
     tieneGarantia?: boolean;                 // heredado del encabezado del acta
     fechaInicioGarantia?: Date | null;       // heredado del acta
     fechaFinGarantia?: Date | null;          // heredado del acta
+
     // ─── Campos de Cobertura de Mantenimiento por Proveedor ───
     tieneCoberturaProveedor?: boolean;
     nombreProveedor?: string;
     fechaInicioCobertura?: Date | null;
     fechaFinCobertura?: Date | null;
+    // ─── Campos adicionales de la Cabecera del Acta e Ingreso de Bienes ───
+    rucProveedor?: string;
+    tipoAdquisicion?: string;
+    descuentoCompra?: number | null;
+    montoCompra?: number | null;
+    tipoComprobante?: string;
+    depreciacionS_N?: string;
+    tiempoGarantia?: number | string | null;
+    valorContable?: number | null;
+    valorResidual?: number | null;
+    valorEnLibros?: number | null;
+    valorDepreciacionAcumulada?: number | null;
+    fechaUltimaDepreciacion?: Date | null;
+    observaciones?: string;
 }
 
 
@@ -361,6 +371,7 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     fechaFinGarantia: a.fechaFinGarantia ? new Date(a.fechaFinGarantia) : null,
                     fechaInicioCobertura: a.fechaInicioCobertura ? new Date(a.fechaInicioCobertura) : null,
                     fechaFinCobertura: a.fechaFinCobertura ? new Date(a.fechaFinCobertura) : null,
+                    fechaUltimaDepreciacion: a.fechaUltimaDepreciacion ? new Date(a.fechaUltimaDepreciacion) : null,
                     atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
             } catch (error) {
