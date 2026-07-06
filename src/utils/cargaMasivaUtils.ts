@@ -149,7 +149,7 @@ const normalizarFilaExcel = (fila: Record<string, unknown>): Record<string, unkn
             
         if (keyClean.startsWith('no. de acta')) filaNormalizada['No. de Acta'] = value;
         else if (keyClean.startsWith('no. secuencial')) filaNormalizada['No. Secuencial'] = value;
-        else if (keyClean.startsWith('id bien') || keyClean.startsWith('nombre bien')) filaNormalizada['ID Bien'] = value;
+        else if (keyClean.startsWith('id bien') || keyClean.startsWith('nombre bien') || keyClean.startsWith('nombre del bien') || keyClean.startsWith('nombre')) filaNormalizada['Nombre del Bien'] = value;
         else if (keyClean.startsWith('fecha de ingreso')) filaNormalizada['Fecha de ingreso'] = value;
         else if (keyClean.startsWith('descripción') || keyClean.startsWith('descripcion')) filaNormalizada['Descripción/Características'] = value;
         else if (keyClean.startsWith('código esbye') || keyClean.startsWith('codigo esbye')) filaNormalizada['Código eSByE'] = value;
@@ -220,7 +220,7 @@ export const validarFilaOficial = (
     const datosFila = { ...fila };
 
     const noActa = textoCelda(fila['No. de Acta']);
-    const idBien = textoCelda(fila['ID Bien']);
+    const idBien = textoCelda(fila['Nombre del Bien']);
     const fechaIngresoRaw = fila['Fecha de ingreso'];
     const descripcion = textoCelda(fila['Descripción/Características']);
     const codigoSbye = textoCelda(fila['Código eSByE']);
@@ -244,7 +244,7 @@ export const validarFilaOficial = (
     const observaciones = textoCelda(fila['Observaciones']);
 
     if (!idBien) {
-        errores.push('El campo "ID Bien" es obligatorio');
+        errores.push('El campo "Nombre del Bien" es obligatorio');
     }
 
     // No. Secuencial es opcional (se calcula a partir del índice de fila si no existe)

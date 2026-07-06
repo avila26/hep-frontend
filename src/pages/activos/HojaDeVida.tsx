@@ -406,12 +406,6 @@ export const HojaDeVida: React.FC = () => {
                             <h3 className="text-base font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-2 m-0">
                                 <i className="pi pi-file-edit" /> Acta de Ingreso
                             </h3>
-                            <Button
-                                label="Ver Acta"
-                                icon="pi pi-external-link"
-                                text size="small"
-                                onClick={() => navigate(`/activos/actas/${acta.idActa}`)}
-                            />
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {[

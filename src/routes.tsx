@@ -12,7 +12,6 @@ import EjecutadosTraslados from './pages/traslados/Ejecutados';
 import HistorialTraslados from './pages/traslados/Historial';
 import ConsultarActivos from './pages/activos/ConsultarActivos';
 import HojaDeVida from './pages/activos/HojaDeVida';
-import RegistrarActa from './pages/activos/RegistrarActa';
 import ConsultarActas from './pages/activos/ConsultarActas';
 import IngresoActivo from './pages/activos/IngresoActivo';
 import Preventivos from './pages/mantenimientos/Preventivos';
@@ -77,8 +76,8 @@ export const routes: RouteObject[] = [
                     { path: 'hoja-vida', element: <HojaDeVida /> },
                     { path: 'hoja-vida/:idActivo', element: <HojaDeVida /> },
                     { path: 'actas', element: <ConsultarActas /> },
-                    { path: 'actas/nueva', element: <RegistrarActa /> },
-                    { path: 'actas/:idActa', element: <RegistrarActa /> }
+                    { path: 'actas/nueva', element: <Navigate to="/activos/ingresar" replace /> },
+                    { path: 'actas/:idActa', element: <Navigate to="/activos/actas" replace /> }
                 ]
             },
             // Traslados

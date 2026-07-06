@@ -318,14 +318,6 @@ const ConsultarActas: React.FC = () => {
             <Toast ref={toast} />
             <ConfirmDialog />
 
-            {/* Toolbar */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                <Button
-                    label="Nueva Acta de Ingreso"
-                    icon="pi pi-plus"
-                    onClick={() => navigate('/activos/actas/nueva')}
-                />
-            </div>
 
             {/* Contador */}
             <div style={{ marginBottom: 12, fontSize: 14, color: '#64748b', fontWeight: 500 }}>

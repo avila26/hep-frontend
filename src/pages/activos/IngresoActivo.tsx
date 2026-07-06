@@ -14,6 +14,7 @@ import { Dialog } from 'primereact/dialog';
 import { Divider } from 'primereact/divider';
 import { FileUpload, FileUploadHandlerEvent } from 'primereact/fileupload';
 import { useActivos, Activo } from '../../context/ActivosContext';
+import { useActas, SerieActa, LineaActa, ActaIngreso } from '../../context/ActasContext';
 import { BarcodeDownload, downloadBarcodeAsPng } from '../../components/BarcodeDownload';
 import { 
     CATALOGOS, 
@@ -29,7 +30,7 @@ import {
 // ─── Interfaces ───
 interface CabeceraActa {
     institucionReceptora: string;
-    fechaActa: Date;
+    fechaActa: Date | null;
     ubicacion: string;
     tipoAdquisicion: string;
     numeroContrato: string;
@@ -43,6 +44,8 @@ interface CabeceraActa {
     montoCompra: number | null;
     descuentoCompra: number | null;
     descripcion: string;
+    funcionarioEntregador: string;
+    funcionarioReceptor: string;
 }
 
 const TIPO_ADQUISICION_OPTIONS = [
@@ -64,6 +67,7 @@ const TIPO_COMPROBANTE_OPTIONS = [
 export const IngresoActivo: React.FC = () => {
     const toast = useRef<Toast>(null);
     const { activos, agregarActivos, registrarCarga } = useActivos();
+    const { crearActa, actualizarActa } = useActas();
 
     // ─── Control de Pasos ───
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -71,9 +75,9 @@ export const IngresoActivo: React.FC = () => {
 
     // ─── Paso 1: Cabecera ───
     const [cabecera, setCabecera] = useState<CabeceraActa>({
-        institucionReceptora: 'HEP-001 HOSPITAL ENRIQUE GARCÉS',
-        fechaActa: new Date(),
-        ubicacion: 'Bodega',
+        institucionReceptora: '',
+        fechaActa: null,
+        ubicacion: '',
         tipoAdquisicion: '',
         numeroContrato: '',
         cargadoPresupuesto: false,
@@ -85,7 +89,9 @@ export const IngresoActivo: React.FC = () => {
         nombreProveedor: '',
         montoCompra: null,
         descuentoCompra: 0,
-        descripcion: ''
+        descripcion: '',
+        funcionarioEntregador: '',
+        funcionarioReceptor: ''
     });
     const [cabeceraErrors, setCabeceraErrors] = useState<Record<string, string>>({});
 
@@ -101,6 +107,7 @@ export const IngresoActivo: React.FC = () => {
 
     // ─── Paso 3 (Ingreso Manual) ───
     const [bienesManuales, setBienesManuales] = useState<Omit<Activo, 'idActivo'>[]>([]);
+    const [mostrarOpcionales, setMostrarOpcionales] = useState(false);
     const [nuevoBien, setNuevoBien] = useState<Partial<Omit<Activo, 'idActivo'>>>({
         nombre: '',
         numeroSerie: '',
@@ -153,6 +160,9 @@ export const IngresoActivo: React.FC = () => {
     // Validar Cabecera
     const handleContinuarPaso2 = () => {
         const errs: Record<string, string> = {};
+        if (!cabecera.institucionReceptora?.trim()) errs.institucionReceptora = 'La institución receptora es obligatoria';
+        if (!cabecera.fechaActa) errs.fechaActa = 'La fecha del acta es obligatoria';
+        if (!cabecera.ubicacion?.trim()) errs.ubicacion = 'La ubicación es obligatoria';
         if (!cabecera.tipoAdquisicion) errs.tipoAdquisicion = 'El tipo de adquisición es obligatorio';
         if (cabecera.tipoAdquisicion === 'Compra' && !cabecera.numeroContrato?.trim()) {
             errs.numeroContrato = 'El número de contrato es obligatorio para compras';
@@ -303,6 +313,105 @@ export const IngresoActivo: React.FC = () => {
         });
     };
 
+    const crearYRegistrarActa = (creados: Activo[]) => {
+        if (creados.length === 0) return;
+
+        // Agrupar activos creados para construir las líneas del acta
+        const groups = new Map<string, Activo[]>();
+        creados.forEach(act => {
+            const key = `${act.nombre}||${act.marca}||${act.modelo}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(act);
+        });
+
+        let idLinea = 1;
+        const lineas: LineaActa[] = [];
+        groups.forEach((activosGrupo) => {
+            const first = activosGrupo[0];
+            
+            const series: SerieActa[] = activosGrupo.map((act, index) => ({
+                idSerie: index + 1,
+                numeroSerie: act.numeroSerie,
+                estadoIndividual: act.estadoActivo === 'MAL' || act.estadoActivo === 'Malo' ? 'Dañado' : act.estadoActivo === 'REG' || act.estadoActivo === 'Regular' ? 'Regular' : 'Bueno',
+                codigoBarras: act.codigoBarras || '',
+                codigoSBYE: act.codigoSBYE,
+                ubicacion: act.ubicacion,
+                responsableEntrega: cabecera.funcionarioEntregador || act.responsableEntrega || 'Bodeguero',
+                codigoInstitucional: act.codigoInstitucional,
+                documentoRespaldo: act.numeroContrato || '',
+                tieneCoberturaProveedor: act.tieneCoberturaProveedor,
+                nombreProveedor: act.nombreProveedor,
+                fechaInicioCobertura: act.fechaInicioCobertura,
+                fechaFinCobertura: act.fechaFinCobertura
+            }));
+
+            let moduloDestino = 'Computadoras';
+            const nom = first.nombre.toLowerCase();
+            if (nom.includes('impresora') || nom.includes('printer')) moduloDestino = 'Impresoras';
+            else if (nom.includes('telefono') || nom.includes('teléfono') || nom.includes('ip phone')) moduloDestino = 'Teléfonos';
+            else if (nom.includes('cctv') || nom.includes('camara') || nom.includes('cámara') || nom.includes('nvr')) moduloDestino = 'CCTV';
+            else if (nom.includes('ap') || nom.includes('access point') || nom.includes('wifi') || nom.includes('router') || nom.includes('switch')) moduloDestino = 'Access Points';
+            else if (nom.includes('lab') || nom.includes('laboratorio') || nom.includes('biomedico') || nom.includes('médico') || nom.includes('medico')) moduloDestino = 'Laboratorio';
+
+            lineas.push({
+                idLinea: idLinea++,
+                moduloDestino,
+                tipoActivo: first.nombre,
+                marca: first.marca,
+                modelo: first.modelo,
+                cantidadDeclarada: activosGrupo.length,
+                especificacionesTecnicas: first.descripcion,
+                estadoLlegada: series[0].estadoIndividual,
+                series,
+                color: first.color,
+                material: first.material,
+                dimension: first.dimension,
+                descripcion: first.descripcion,
+                origenIngreso: (cabecera.tipoAdquisicion as any) || 'Compra',
+                motivoIngreso: 'Adquisición Nueva',
+                unidadMedida: 'Unidad',
+                condicionDepreciacion: first.depreciacionS_N === 'S' || first.depreciacionS_N === 'SI' ? 'Lineal' : 'No aplica',
+                tiempoVidaUtil: first.tiempoVidaUtil,
+                atributosEspecificos: first.atributosEspecificos
+            });
+        });
+
+        let tipoIngreso: ActaIngreso['tipoIngreso'] = 'Acta de Entrega-Recepción';
+        if (cabecera.tipoComprobante === 'Factura' || cabecera.tipoComprobante === 'Nota de venta') {
+            tipoIngreso = 'Orden de compra';
+        } else if (cabecera.tipoComprobante === 'Convenio') {
+            tipoIngreso = 'Contrato';
+        }
+
+        const nuevaActaData: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'> = {
+            tipoIngreso,
+            numeroOrdenMemorandum: cabecera.numeroComprobante || 'S/N',
+            empresaProveedora: cabecera.nombreProveedor || 'Proveedor HEP',
+            tieneGarantia: creados.some(a => a.tieneGarantia),
+            fechaInicioGarantia: creados.find(a => a.tieneGarantia && a.fechaInicioCobertura)?.fechaInicioCobertura || null,
+            fechaFinGarantia: creados.find(a => a.tieneGarantia && a.fechaFinCobertura)?.fechaFinCobertura || null,
+            fechaIngreso: cabecera.fechaActa || new Date(),
+            tecnicoReceptor: cabecera.funcionarioReceptor || 'Técnico HEP',
+            funcionarioReceptor: cabecera.funcionarioReceptor || '',
+            responsableEntrega: cabecera.funcionarioEntregador || 'Bodeguero',
+            funcionarioEntregador: cabecera.funcionarioEntregador || '',
+            observacionGeneral: cabecera.descripcion,
+            numeroContrato: cabecera.numeroContrato || '',
+            itemPresupuestario: cabecera.itemPresupuestario || '',
+            partidaPresupuestaria: cabecera.partidaPresupuestaria || '',
+            valorAdquisicionTotal: cabecera.montoCompra || null,
+            bloqueado: false,
+            lineas
+        };
+
+        const nuevaActa = crearActa(nuevaActaData);
+        actualizarActa({
+            ...nuevaActa,
+            estado: 'Cerrada',
+            activosGenerados: creados.map(a => a.idActivo)
+        });
+    };
+
     const handleConfirmarImportacionMasiva = () => {
         if (activosValidos.length === 0) return;
         setImportando(true);
@@ -316,8 +425,8 @@ export const IngresoActivo: React.FC = () => {
                 montoCompra: cabecera.montoCompra,
                 descuentoCompra: cabecera.descuentoCompra,
                 tipoComprobante: cabecera.tipoComprobante,
-                responsableEntrega: 'Bodeguero',
-                fechaAdquisicion: cabecera.fechaActa
+                responsableEntrega: cabecera.funcionarioEntregador || 'Bodeguero',
+                fechaAdquisicion: cabecera.fechaActa || new Date()
             }));
 
             const creados = agregarActivos(activosFinales);
@@ -340,6 +449,7 @@ export const IngresoActivo: React.FC = () => {
             });
 
             setActivosImportados(creados);
+            crearYRegistrarActa(creados);
         } catch (error) {
             console.error(error);
             toast.current?.show({
@@ -386,7 +496,7 @@ export const IngresoActivo: React.FC = () => {
                 descripcion: nuevoBien.descripcion || nuevoBien.observaciones || '',
                 modelo: nuevoBien.modelo || '',
                 material: nuevoBien.material || '',
-                fechaAdquisicion: cabecera.fechaActa,
+                fechaAdquisicion: cabecera.fechaActa || new Date(),
                 responsableEntrega: 'Bodeguero',
                 dimension: nuevoBien.dimension || '',
                 numeroContrato: cabecera.numeroContrato || '',
@@ -467,10 +577,10 @@ export const IngresoActivo: React.FC = () => {
                 montoCompra: cabecera.montoCompra,
                 descuentoCompra: cabecera.descuentoCompra,
                 tipoComprobante: cabecera.tipoComprobante,
-                fechaAdquisicion: cabecera.fechaActa,
+                fechaAdquisicion: cabecera.fechaActa || new Date(),
                 numeroActa: cabecera.numeroComprobante.includes('-')
                     ? cabecera.numeroComprobante
-                    : `${cabecera.numeroComprobante}-${new Date(cabecera.fechaActa).getFullYear()}`
+                    : `${cabecera.numeroComprobante}-${new Date(cabecera.fechaActa || new Date()).getFullYear()}`
             }));
 
             const creados = agregarActivos(activosFinales);
@@ -483,6 +593,7 @@ export const IngresoActivo: React.FC = () => {
             });
 
             setActivosImportados(creados);
+            crearYRegistrarActa(creados);
         } catch (error) {
             console.error(error);
             toast.current?.show({
@@ -523,9 +634,9 @@ export const IngresoActivo: React.FC = () => {
         setCurrentStep(1);
         setSelectedFlow(null);
         setCabecera({
-            institucionReceptora: 'HEP-001 HOSPITAL ENRIQUE GARCÉS',
-            fechaActa: new Date(),
-            ubicacion: 'Bodega',
+            institucionReceptora: '',
+            fechaActa: null,
+            ubicacion: '',
             tipoAdquisicion: '',
             numeroContrato: '',
             cargadoPresupuesto: false,
@@ -537,7 +648,9 @@ export const IngresoActivo: React.FC = () => {
             nombreProveedor: '',
             montoCompra: null,
             descuentoCompra: 0,
-            descripcion: ''
+            descripcion: '',
+            funcionarioEntregador: '',
+            funcionarioReceptor: ''
         });
         setCabeceraErrors({});
         setArchivoSeleccionado(null);
@@ -560,18 +673,47 @@ export const IngresoActivo: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Institución Receptora */}
                 <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Institución Receptora</label>
-                    <InputText value={cabecera.institucionReceptora} disabled className="w-full bg-slate-50 border-slate-200 text-slate-600 font-medium" />
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Institución Receptora <span className="text-red-500">*</span></label>
+                    <InputText 
+                        value={cabecera.institucionReceptora} 
+                        onChange={e => {
+                            setCabecera(prev => ({ ...prev, institucionReceptora: e.target.value }));
+                            if (cabeceraErrors.institucionReceptora) setCabeceraErrors(prev => ({ ...prev, institucionReceptora: '' }));
+                        }}
+                        placeholder="Ej: HEP-001 HOSPITAL ENRIQUE GARCÉS"
+                        className={`w-full ${cabeceraErrors.institucionReceptora ? 'p-invalid border-red-500' : ''}`}
+                    />
+                    {cabeceraErrors.institucionReceptora && <small className="text-red-500 mt-1 block">{cabeceraErrors.institucionReceptora}</small>}
                 </div>
                 {/* Fecha Acta */}
                 <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Fecha del Acta</label>
-                    <Calendar value={cabecera.fechaActa} disabled dateFormat="dd/mm/yy" className="w-full bg-slate-50 text-slate-600 font-medium" />
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Fecha del Acta <span className="text-red-500">*</span></label>
+                    <Calendar 
+                        value={cabecera.fechaActa} 
+                        onChange={e => {
+                            setCabecera(prev => ({ ...prev, fechaActa: e.value as Date }));
+                            if (cabeceraErrors.fechaActa) setCabeceraErrors(prev => ({ ...prev, fechaActa: '' }));
+                        }}
+                        dateFormat="dd/mm/yy" 
+                        showIcon
+                        placeholder="Seleccione fecha"
+                        className={`w-full ${cabeceraErrors.fechaActa ? 'p-invalid' : ''}`}
+                    />
+                    {cabeceraErrors.fechaActa && <small className="text-red-500 mt-1 block">{cabeceraErrors.fechaActa}</small>}
                 </div>
                 {/* Ubicación */}
                 <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Ubicación</label>
-                    <InputText value={cabecera.ubicacion} disabled className="w-full bg-slate-50 border-slate-200 text-slate-600 font-medium" />
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Ubicación <span className="text-red-500">*</span></label>
+                    <InputText 
+                        value={cabecera.ubicacion} 
+                        onChange={e => {
+                            setCabecera(prev => ({ ...prev, ubicacion: e.target.value }));
+                            if (cabeceraErrors.ubicacion) setCabeceraErrors(prev => ({ ...prev, ubicacion: '' }));
+                        }}
+                        placeholder="Ej: Bodega"
+                        className={`w-full ${cabeceraErrors.ubicacion ? 'p-invalid border-red-500' : ''}`}
+                    />
+                    {cabeceraErrors.ubicacion && <small className="text-red-500 mt-1 block">{cabeceraErrors.ubicacion}</small>}
                 </div>
 
                 {/* Tipo Adquisición */}
@@ -702,43 +844,47 @@ export const IngresoActivo: React.FC = () => {
                     />
                 </div>
 
-                {/* Presupuesto Switch */}
-                <div className="flex items-center gap-3 align-self-center pt-2">
-                    <InputSwitch 
-                        checked={cabecera.cargadoPresupuesto} 
-                        onChange={e => setCabecera(prev => ({ 
-                            ...prev, 
-                            cargadoPresupuesto: e.value,
-                            itemPresupuestario: e.value ? prev.itemPresupuestario : '',
-                            partidaPresupuestaria: e.value ? prev.partidaPresupuestaria : ''
-                        }))} 
+                {/* Presupuestarios */}
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Ítem Presupuestario</label>
+                    <InputText 
+                        value={cabecera.itemPresupuestario} 
+                        onChange={e => setCabecera(prev => ({ ...prev, itemPresupuestario: e.target.value }))} 
+                        placeholder="Código de Item" 
+                        className="w-full" 
                     />
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-350">¿Cargado al Presupuesto Institucional?</span>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Partida Presupuestaria</label>
+                    <InputText 
+                        value={cabecera.partidaPresupuestaria} 
+                        onChange={e => setCabecera(prev => ({ ...prev, partidaPresupuestaria: e.target.value }))} 
+                        placeholder="Código de Partida" 
+                        className="w-full" 
+                    />
                 </div>
 
-                {/* Presupuestarios condicionales */}
-                {cabecera.cargadoPresupuesto && (
-                    <>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Ítem Presupuestario</label>
-                            <InputText 
-                                value={cabecera.itemPresupuestario} 
-                                onChange={e => setCabecera(prev => ({ ...prev, itemPresupuestario: e.target.value }))} 
-                                placeholder="Código de Item" 
-                                className="w-full" 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Partida Presupuestaria</label>
-                            <InputText 
-                                value={cabecera.partidaPresupuestaria} 
-                                onChange={e => setCabecera(prev => ({ ...prev, partidaPresupuestaria: e.target.value }))} 
-                                placeholder="Código de Partida" 
-                                className="w-full" 
-                            />
-                        </div>
-                    </>
-                )}
+                {/* Entregado Por */}
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Entregado Por</label>
+                    <InputText 
+                        value={cabecera.funcionarioEntregador} 
+                        onChange={e => setCabecera(prev => ({ ...prev, funcionarioEntregador: e.target.value }))} 
+                        placeholder="Nombre de quien entrega" 
+                        className="w-full" 
+                    />
+                </div>
+
+                {/* Recibido Por */}
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Recibido Por</label>
+                    <InputText 
+                        value={cabecera.funcionarioReceptor} 
+                        onChange={e => setCabecera(prev => ({ ...prev, funcionarioReceptor: e.target.value }))} 
+                        placeholder="Nombre de quien recibe" 
+                        className="w-full" 
+                    />
+                </div>
 
                 {/* Descripción */}
                 <div className="col-span-1 md:col-span-3">
@@ -1006,117 +1152,121 @@ export const IngresoActivo: React.FC = () => {
                             Agregar Bien
                         </h3>
                         <div className="space-y-4">
-                            {/* ID Bien */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">ID Bien (Nombre) <span className="text-red-500">*</span></label>
-                                <InputText 
-                                    value={nuevoBien.nombre} 
-                                    onChange={e => {
-                                        setNuevoBien(prev => ({ ...prev, nombre: e.target.value }));
-                                        if (bienErrors.nombre) setBienErrors(prev => ({ ...prev, nombre: '' }));
-                                    }} 
-                                    placeholder="Ej: Monitor Multiparamétrico"
-                                    className={`w-full p-inputtext-sm ${bienErrors.nombre ? 'p-invalid' : ''}`}
-                                />
-                                {bienErrors.nombre && <small className="text-red-500">{bienErrors.nombre}</small>}
+                            {/* Grid de campos obligatorios / principales */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Nombre del Bien */}
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre del Bien <span className="text-red-500">*</span></label>
+                                    <InputText 
+                                        value={nuevoBien.nombre} 
+                                        onChange={e => {
+                                            setNuevoBien(prev => ({ ...prev, nombre: e.target.value }));
+                                            if (bienErrors.nombre) setBienErrors(prev => ({ ...prev, nombre: '' }));
+                                        }} 
+                                        placeholder="Ej: Monitor Multiparamétrico"
+                                        className={`w-full p-inputtext-sm ${bienErrors.nombre ? 'p-invalid' : ''}`}
+                                    />
+                                    {bienErrors.nombre && <small className="text-red-500">{bienErrors.nombre}</small>}
+                                </div>
+
+                                {/* Serie */}
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Número de Serie <span className="text-red-500">*</span></label>
+                                    <InputText 
+                                        value={nuevoBien.numeroSerie} 
+                                        onChange={e => {
+                                            setNuevoBien(prev => ({ ...prev, numeroSerie: e.target.value }));
+                                            if (bienErrors.numeroSerie) setBienErrors(prev => ({ ...prev, numeroSerie: '' }));
+                                        }} 
+                                        placeholder="Ej: SN-499281"
+                                        className={`w-full p-inputtext-sm ${bienErrors.numeroSerie ? 'p-invalid' : ''}`}
+                                    />
+                                    {bienErrors.numeroSerie && <small className="text-red-500">{bienErrors.numeroSerie}</small>}
+                                </div>
+
+                                {/* Marca */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Marca <span className="text-red-500">*</span></label>
+                                    <InputText 
+                                        value={nuevoBien.marca} 
+                                        onChange={e => {
+                                            setNuevoBien(prev => ({ ...prev, marca: e.target.value }));
+                                            if (bienErrors.marca) setBienErrors(prev => ({ ...prev, marca: '' }));
+                                        }} 
+                                        placeholder="Ej: Philips, GE"
+                                        className={`w-full p-inputtext-sm ${bienErrors.marca ? 'p-invalid' : ''}`}
+                                    />
+                                    {bienErrors.marca && <small className="text-red-500">{bienErrors.marca}</small>}
+                                </div>
+
+                                {/* Costo Adquisición */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Costo <span className="text-red-500">*</span></label>
+                                    <InputNumber 
+                                        value={nuevoBien.valorAdquisicion} 
+                                        onValueChange={e => {
+                                            setNuevoBien(prev => ({ ...prev, valorAdquisicion: e.value }));
+                                            if (bienErrors.valorAdquisicion) setBienErrors(prev => ({ ...prev, valorAdquisicion: '' }));
+                                        }} 
+                                        mode="currency" 
+                                        currency="USD" 
+                                        locale="es-EC"
+                                        placeholder="$0.00"
+                                        className="w-full p-inputnumber-sm"
+                                    />
+                                    {bienErrors.valorAdquisicion && <small className="text-red-500">{bienErrors.valorAdquisicion}</small>}
+                                </div>
+
+                                {/* Código eSByE */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Código eSByE</label>
+                                    <InputText 
+                                        value={nuevoBien.codigoSBYE} 
+                                        onChange={e => setNuevoBien(prev => ({ ...prev, codigoSBYE: e.target.value }))} 
+                                        placeholder="Código"
+                                        className="w-full p-inputtext-sm"
+                                    />
+                                </div>
+
+                                {/* Estado */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Estado</label>
+                                    <Dropdown 
+                                        value={nuevoBien.estadoActivo} 
+                                        options={CATALOGOS.estadoActivo}
+                                        onChange={e => setNuevoBien(prev => ({ ...prev, estadoActivo: e.value }))} 
+                                        className="w-full p-dropdown-sm"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Serie */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Número de Serie <span className="text-red-500">*</span></label>
-                                <InputText 
-                                    value={nuevoBien.numeroSerie} 
-                                    onChange={e => {
-                                        setNuevoBien(prev => ({ ...prev, numeroSerie: e.target.value }));
-                                        if (bienErrors.numeroSerie) setBienErrors(prev => ({ ...prev, numeroSerie: '' }));
-                                    }} 
-                                    placeholder="Ej: SN-499281"
-                                    className={`w-full p-inputtext-sm ${bienErrors.numeroSerie ? 'p-invalid' : ''}`}
-                                />
-                                {bienErrors.numeroSerie && <small className="text-red-500">{bienErrors.numeroSerie}</small>}
-                            </div>
+                            {/* Switches de depreciación y garantía */}
+                            <div className="space-y-2 mt-2">
+                                <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">¿Aplica Depreciación?</span>
+                                    <InputSwitch 
+                                        checked={nuevoBien.depreciacionS_N === 'S'} 
+                                        onChange={e => setNuevoBien(prev => ({ ...prev, depreciacionS_N: e.value ? 'S' : 'N' }))} 
+                                    />
+                                </div>
 
-                            {/* Marca */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Marca <span className="text-red-500">*</span></label>
-                                <InputText 
-                                    value={nuevoBien.marca} 
-                                    onChange={e => {
-                                        setNuevoBien(prev => ({ ...prev, marca: e.target.value }));
-                                        if (bienErrors.marca) setBienErrors(prev => ({ ...prev, marca: '' }));
-                                    }} 
-                                    placeholder="Ej: Philips, GE, Lenovo"
-                                    className={`w-full p-inputtext-sm ${bienErrors.marca ? 'p-invalid' : ''}`}
-                                />
-                                {bienErrors.marca && <small className="text-red-500">{bienErrors.marca}</small>}
-                            </div>
-
-                            {/* Costo Adquisición */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Costo de Adquisición <span className="text-red-500">*</span></label>
-                                <InputNumber 
-                                    value={nuevoBien.valorAdquisicion} 
-                                    onValueChange={e => {
-                                        setNuevoBien(prev => ({ ...prev, valorAdquisicion: e.value }));
-                                        if (bienErrors.valorAdquisicion) setBienErrors(prev => ({ ...prev, valorAdquisicion: '' }));
-                                    }} 
-                                    mode="currency" 
-                                    currency="USD" 
-                                    locale="es-EC"
-                                    placeholder="$0.00"
-                                    className="w-full p-inputnumber-sm"
-                                />
-                                {bienErrors.valorAdquisicion && <small className="text-red-500">{bienErrors.valorAdquisicion}</small>}
-                            </div>
-
-                            {/* Código eSByE */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Código eSByE</label>
-                                <InputText 
-                                    value={nuevoBien.codigoSBYE} 
-                                    onChange={e => setNuevoBien(prev => ({ ...prev, codigoSBYE: e.target.value }))} 
-                                    placeholder="Código eSByE"
-                                    className="w-full p-inputtext-sm"
-                                />
-                            </div>
-
-                            {/* Estado */}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Estado</label>
-                                <Dropdown 
-                                    value={nuevoBien.estadoActivo} 
-                                    options={CATALOGOS.estadoActivo}
-                                    onChange={e => setNuevoBien(prev => ({ ...prev, estadoActivo: e.value }))} 
-                                    className="w-full p-dropdown-sm"
-                                />
-                            </div>
-
-                            {/* Depreciación Switch */}
-                            <div className="flex items-center justify-between pt-1">
-                                <span className="text-xs font-semibold text-slate-500 uppercase">¿Aplica Depreciación?</span>
-                                <InputSwitch 
-                                    checked={nuevoBien.depreciacionS_N === 'S'} 
-                                    onChange={e => setNuevoBien(prev => ({ ...prev, depreciacionS_N: e.value ? 'S' : 'N' }))} 
-                                />
-                            </div>
-
-                            {/* Garantía Switch */}
-                            <div className="flex items-center justify-between pt-1">
-                                <span className="text-xs font-semibold text-slate-500 uppercase">¿Tiene Garantía?</span>
-                                <InputSwitch 
-                                    checked={!!nuevoBien.tieneGarantia} 
-                                    onChange={e => setNuevoBien(prev => ({ 
-                                        ...prev, 
-                                        tieneGarantia: e.value,
-                                        tiempoGarantia: e.value ? prev.tiempoGarantia : ''
-                                    }))} 
-                                />
+                                <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">¿Tiene Garantía?</span>
+                                    <InputSwitch 
+                                        checked={!!nuevoBien.tieneGarantia} 
+                                        onChange={e => setNuevoBien(prev => ({ 
+                                            ...prev, 
+                                            tieneGarantia: e.value,
+                                            tiempoGarantia: e.value ? prev.tiempoGarantia : ''
+                                        }))} 
+                                    />
+                                </div>
                             </div>
 
                             {/* Tiempo de Garantía */}
                             {nuevoBien.tieneGarantia && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Tiempo de Garantía (meses/años) *</label>
+                                <div className="mt-2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Tiempo de Garantía *</label>
                                     <InputText 
                                         value={nuevoBien.tiempoGarantia !== null && nuevoBien.tiempoGarantia !== undefined ? String(nuevoBien.tiempoGarantia) : ''} 
                                         onChange={e => {
@@ -1130,44 +1280,56 @@ export const IngresoActivo: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* Características Secundarias Expandibles */}
+                            {/* Toggle de campos opcionales */}
                             <Divider className="my-2" />
-                            <div className="space-y-3">
-                                <span className="text-xs font-bold text-slate-400 uppercase block">Campos Opcionales</span>
-                                
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Modelo</label>
-                                    <InputText value={nuevoBien.modelo} onChange={e => setNuevoBien(prev => ({ ...prev, modelo: e.target.value }))} className="w-full p-inputtext-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vida Útil (años)</label>
-                                    <InputNumber value={nuevoBien.tiempoVidaUtil} onValueChange={e => setNuevoBien(prev => ({ ...prev, tiempoVidaUtil: e.value }))} min={0} className="w-full p-inputnumber-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Color</label>
-                                    <Dropdown value={nuevoBien.color} options={CATALOGOS.color} onChange={e => setNuevoBien(prev => ({ ...prev, color: e.value }))} placeholder="Seleccione color" className="w-full p-dropdown-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Material</label>
-                                    <InputText value={nuevoBien.material} onChange={e => setNuevoBien(prev => ({ ...prev, material: e.target.value }))} className="w-full p-inputtext-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dimensiones</label>
-                                    <InputText value={nuevoBien.dimension} onChange={e => setNuevoBien(prev => ({ ...prev, dimension: e.target.value }))} className="w-full p-inputtext-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observaciones</label>
-                                    <InputTextarea value={nuevoBien.observaciones} onChange={e => setNuevoBien(prev => ({ ...prev, observaciones: e.target.value }))} rows={2} className="w-full p-inputtext-sm" />
-                                </div>
+                            <div className="flex justify-center">
+                                <Button 
+                                    type="button"
+                                    label={mostrarOpcionales ? "Ocultar opcionales" : "Mostrar opcionales"}
+                                    icon={mostrarOpcionales ? "pi pi-chevron-up" : "pi pi-chevron-down"}
+                                    onClick={() => setMostrarOpcionales(!mostrarOpcionales)}
+                                    className="p-button-text p-button-sm text-slate-600 font-bold hover:bg-slate-100 w-full"
+                                />
                             </div>
 
-                            <Button 
-                                label="Agregar Bien a Lista" 
-                                icon="pi pi-plus" 
-                                severity="secondary" 
-                                onClick={handleAddBienManual} 
-                                className="w-full font-semibold p-button-sm shadow-sm" 
-                            />
+                            {mostrarOpcionales && (
+                                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-slate-100 dark:border-slate-800 transition-all">
+                                    <div className="col-span-1">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Modelo</label>
+                                        <InputText value={nuevoBien.modelo} onChange={e => setNuevoBien(prev => ({ ...prev, modelo: e.target.value }))} className="w-full p-inputtext-sm" placeholder="Modelo" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vida Útil (años)</label>
+                                        <InputNumber value={nuevoBien.tiempoVidaUtil} onValueChange={e => setNuevoBien(prev => ({ ...prev, tiempoVidaUtil: e.value }))} min={0} className="w-full p-inputnumber-sm" placeholder="Vida útil" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Color</label>
+                                        <Dropdown value={nuevoBien.color} options={CATALOGOS.color} onChange={e => setNuevoBien(prev => ({ ...prev, color: e.value }))} placeholder="Color" className="w-full p-dropdown-sm" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Material</label>
+                                        <InputText value={nuevoBien.material} onChange={e => setNuevoBien(prev => ({ ...prev, material: e.target.value }))} className="w-full p-inputtext-sm" placeholder="Material" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dimensiones</label>
+                                        <InputText value={nuevoBien.dimension} onChange={e => setNuevoBien(prev => ({ ...prev, dimension: e.target.value }))} className="w-full p-inputtext-sm" placeholder="Dimensiones" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observaciones</label>
+                                        <InputTextarea value={nuevoBien.observaciones} onChange={e => setNuevoBien(prev => ({ ...prev, observaciones: e.target.value }))} rows={2} className="w-full p-inputtext-sm" placeholder="Detalles u observaciones..." />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-2">
+                                <Button 
+                                    label="Agregar Bien a Lista" 
+                                    icon="pi pi-plus" 
+                                    severity="info" 
+                                    onClick={handleAddBienManual} 
+                                    className="w-full font-bold p-button-sm shadow-md bg-indigo-600 hover:bg-indigo-700 text-white border-0 py-2.5" 
+                                />
+                            </div>
                         </div>
                     </Card>
 
@@ -1179,7 +1341,7 @@ export const IngresoActivo: React.FC = () => {
 
                         <DataTable value={bienesManuales} className="p-datatable-sm" emptyMessage="No hay bienes agregados a esta acta todavía.">
                             <Column header="N°" body={(_, options) => options.rowIndex + 1} style={{ width: '60px' }} />
-                            <Column field="nombre" header="ID Bien (Nombre)" />
+                            <Column field="nombre" header="Nombre del Bien" />
                             <Column field="numeroSerie" header="Serie" />
                             <Column field="marca" header="Marca" />
                             <Column header="Costo" body={row => `$${row.valorAdquisicion?.toFixed(2)}`} />
