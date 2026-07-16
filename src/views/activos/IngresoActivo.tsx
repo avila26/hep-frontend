@@ -23,8 +23,7 @@ import {
 import { 
     leerFilasExcel, 
     validarArchivoExcelOficial, 
-    descargarPlantillaOficial, 
-    calcularEstadoCarga 
+    descargarPlantillaOficial
 } from '../../utils/cargaMasivaUtils';
 
 // ─── Interfaces ───
@@ -34,6 +33,7 @@ interface CabeceraActa {
     ubicacion: string;
     tipoAdquisicion: string;
     numeroContrato: string;
+    cuentaContable: string;
     cargadoPresupuesto: boolean;
     itemPresupuestario: string;
     partidaPresupuestaria: string;
@@ -66,7 +66,7 @@ const TIPO_COMPROBANTE_OPTIONS = [
 
 export const IngresoActivo: React.FC = () => {
     const toast = useRef<Toast>(null);
-    const { activos, agregarActivos, registrarCarga } = useActivos();
+    const { activos, agregarActivos, registrarCarga, cargarActivos } = useActivos();
     const { crearActa, actualizarActa } = useActas();
 
     // ─── Control de Pasos ───
@@ -80,6 +80,7 @@ export const IngresoActivo: React.FC = () => {
         ubicacion: '',
         tipoAdquisicion: '',
         numeroContrato: '',
+        cuentaContable: '',
         cargadoPresupuesto: false,
         itemPresupuestario: '',
         partidaPresupuestaria: '',
@@ -313,7 +314,7 @@ export const IngresoActivo: React.FC = () => {
         });
     };
 
-    const crearYRegistrarActa = (creados: Activo[]) => {
+    const crearYRegistrarActa = async (creados: Activo[]) => {
         if (creados.length === 0) return;
 
         // Agrupar activos creados para construir las líneas del acta
@@ -351,7 +352,7 @@ export const IngresoActivo: React.FC = () => {
             else if (nom.includes('telefono') || nom.includes('teléfono') || nom.includes('ip phone')) moduloDestino = 'Teléfonos';
             else if (nom.includes('cctv') || nom.includes('camara') || nom.includes('cámara') || nom.includes('nvr')) moduloDestino = 'CCTV';
             else if (nom.includes('ap') || nom.includes('access point') || nom.includes('wifi') || nom.includes('router') || nom.includes('switch')) moduloDestino = 'Access Points';
-            else if (nom.includes('lab') || nom.includes('laboratorio') || nom.includes('biomedico') || nom.includes('médico') || nom.includes('medico')) moduloDestino = 'Laboratorio';
+            else if (nom.includes('lab') || nom.includes('laboratorio') || nom.includes('biomédico') || nom.includes('médico') || nom.includes('medico')) moduloDestino = 'Laboratorio';
 
             lineas.push({
                 idLinea: idLinea++,
@@ -388,6 +389,7 @@ export const IngresoActivo: React.FC = () => {
             numeroOrdenMemorandum: cabecera.numeroComprobante || 'S/N',
             empresaProveedora: cabecera.nombreProveedor || 'Proveedor HEP',
             tieneGarantia: creados.some(a => a.tieneGarantia),
+            tiempoGarantia: creados.find(a => a.tieneGarantia)?.tiempoGarantia || null,
             fechaInicioGarantia: creados.find(a => a.tieneGarantia && a.fechaInicioCobertura)?.fechaInicioCobertura || null,
             fechaFinGarantia: creados.find(a => a.tieneGarantia && a.fechaFinCobertura)?.fechaFinCobertura || null,
             fechaIngreso: cabecera.fechaActa || new Date(),
@@ -397,71 +399,173 @@ export const IngresoActivo: React.FC = () => {
             funcionarioEntregador: cabecera.funcionarioEntregador || '',
             observacionGeneral: cabecera.descripcion,
             numeroContrato: cabecera.numeroContrato || '',
+            cuentaContable: cabecera.cuentaContable || '',
             itemPresupuestario: cabecera.itemPresupuestario || '',
             partidaPresupuestaria: cabecera.partidaPresupuestaria || '',
             valorAdquisicionTotal: cabecera.montoCompra || null,
+            valorUnitario: cabecera.montoCompra || null,
+            fechaDNS: cabecera.fechaActa || null,
+            institucionReceptora: cabecera.institucionReceptora || '',
+            fechaActa: cabecera.fechaActa || null,
+            ubicacion: cabecera.ubicacion || '',
+            tipoComprobante: cabecera.tipoComprobante || '',
+            rucProveedor: cabecera.rucProveedor || '',
+            descuentoCompra: cabecera.descuentoCompra || null,
             bloqueado: false,
             lineas
         };
 
-        const nuevaActa = crearActa(nuevaActaData);
-        actualizarActa({
+        const nuevaActa = await crearActa(nuevaActaData);
+        await actualizarActa({
             ...nuevaActa,
             estado: 'Cerrada',
             activosGenerados: creados.map(a => a.idActivo)
         });
     };
 
-    const handleConfirmarImportacionMasiva = () => {
-        if (activosValidos.length === 0) return;
+    const handleConfirmarImportacionMasiva = async () => {
+        if (!archivoSeleccionado || activosValidos.length === 0) return;
         setImportando(true);
+
+        let actaCreadaId: number | null = null;
+
         try {
-            // Mapear los activos heredando los campos de la cabecera
-            const activosFinales = activosValidos.map(act => ({
-                ...act,
-                rucProveedor: cabecera.rucProveedor,
-                tipoAdquisicion: cabecera.tipoAdquisicion,
-                numeroContrato: cabecera.numeroContrato || '',
-                montoCompra: cabecera.montoCompra,
-                descuentoCompra: cabecera.descuentoCompra,
-                tipoComprobante: cabecera.tipoComprobante,
-                responsableEntrega: cabecera.funcionarioEntregador || 'Bodeguero',
-                fechaAdquisicion: cabecera.fechaActa || new Date()
-            }));
+            // 1. Crear el Acta de Ingreso primero para obtener su referencia
+            let tipoIngreso: ActaIngreso['tipoIngreso'] = 'Acta de Entrega-Recepción';
+            if (cabecera.tipoComprobante === 'Factura' || cabecera.tipoComprobante === 'Nota de venta') {
+                tipoIngreso = 'Orden de compra';
+            } else if (cabecera.tipoComprobante === 'Convenio') {
+                tipoIngreso = 'Contrato';
+            }
 
-            const creados = agregarActivos(activosFinales);
+            const nuevaActaData: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'> = {
+                tipoIngreso,
+                numeroOrdenMemorandum: cabecera.numeroComprobante || 'S/N',
+                empresaProveedora: cabecera.nombreProveedor || 'Proveedor HEP',
+                tieneGarantia: false,
+                fechaIngreso: cabecera.fechaActa || new Date(),
+                tecnicoReceptor: cabecera.funcionarioReceptor || 'Técnico HEP',
+                funcionarioReceptor: cabecera.funcionarioReceptor || '',
+                responsableEntrega: cabecera.funcionarioEntregador || '',
+                funcionarioEntregador: cabecera.funcionarioEntregador || '',
+            observacionGeneral: cabecera.descripcion,
+            numeroContrato: cabecera.numeroContrato || '',
+            cuentaContable: cabecera.cuentaContable || '',
+            itemPresupuestario: cabecera.itemPresupuestario || '',
+            partidaPresupuestaria: cabecera.partidaPresupuestaria || '',
+            valorAdquisicionTotal: cabecera.montoCompra || null,
+            valorUnitario: cabecera.montoCompra || null,
+            fechaDNS: cabecera.fechaActa || null,
+            institucionReceptora: cabecera.institucionReceptora || '',
+            fechaActa: cabecera.fechaActa || null,
+            ubicacion: cabecera.ubicacion || '',
+            tipoComprobante: cabecera.tipoComprobante || '',
+            rucProveedor: cabecera.rucProveedor || '',
+            descuentoCompra: cabecera.descuentoCompra || null,
+            bloqueado: false,
+                lineas: []  // Vacía — los bienes vienen del Excel directamente
+            };
 
+            const nuevaActa = await crearActa(nuevaActaData);
+            actaCreadaId = nuevaActa.idActa;
+
+            // 2. Enviar el archivo Excel + datos del encabezado al endpoint transaccional
+            const form = new FormData();
+            form.append('file', archivoSeleccionado);
+            form.append('referenciaActa', nuevaActa.referencia);
+            form.append('ubicacionDefault', cabecera.ubicacion || 'Bodega de Ingreso');
+            form.append('responsableEntrega', cabecera.funcionarioEntregador || 'Bodeguero');
+            
+            // Campos adicionales de la cabecera para los activos
+            form.append('numeroContrato', cabecera.numeroContrato || '');
+            form.append('cuentaContable', cabecera.cuentaContable || '');
+            form.append('itemPresupuestario', cabecera.itemPresupuestario || '');
+            form.append('partidaPresupuestaria', cabecera.partidaPresupuestaria || '');
+            form.append('nombreProveedor', cabecera.nombreProveedor || '');
+            form.append('rucProveedor', cabecera.rucProveedor || '');
+            form.append('tipoAdquisicion', cabecera.tipoAdquisicion || '');
+            form.append('tipoComprobante', cabecera.tipoComprobante || '');
+            if (cabecera.montoCompra !== null) form.append('montoCompra', cabecera.montoCompra.toString());
+            if (cabecera.descuentoCompra) form.append('descuentoCompra', cabecera.descuentoCompra.toString());
+
+            const res = await fetch('/api/activos/carga-masiva', { method: 'POST', body: form });
+            const data = await res.json();
+
+            if (!res.ok || !data.exito) {
+                // Si el servidor rechaza la carga → eliminar el acta creada (rollback manual)
+                if (actaCreadaId) {
+                    try {
+                        await fetch(`/api/actas/${actaCreadaId}`, { method: 'DELETE' });
+                    } catch (_) { /* ignorar error de limpieza */ }
+                }
+
+                const detalle = data.errores
+                    ? `${data.errores.length} fila(s) con errores.`
+                    : (data.error || data.mensaje || 'Error desconocido.');
+
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Error en Carga Masiva',
+                    detail: detalle,
+                    life: 6000
+                });
+
+                // Mostrar errores del servidor en la tabla de validación
+                if (data.errores && Array.isArray(data.errores)) {
+                    setResultadosVal(prev => prev.map(r => {
+                        const errorServidor = data.errores.find((e: any) => e.fila === r.numeroFila);
+                        if (errorServidor) {
+                            return { ...r, exitoso: false, mensajeError: errorServidor.mensajes.join('; ') };
+                        }
+                        return r;
+                    }));
+                }
+                return;
+            }
+
+            // 3. Éxito: registrar el log de carga y mostrar resultado
             registrarCarga({
                 fechaCarga: new Date(),
                 nombreArchivo: nombreArchivo || 'carga_masiva.xlsx',
                 totalFilas: resultadosVal.length,
-                filasExitosas: activosValidos.length,
-                filasConError: resultadosVal.length - activosValidos.length,
-                estado: calcularEstadoCarga(activosValidos.length, resultadosVal.length - activosValidos.length),
+                filasExitosas: data.insertados ?? activosValidos.length,
+                filasConError: 0,
+                estado: 'COMPLETADO',
                 resultados: resultadosVal.map(({ activo, ...resto }) => resto)
             });
 
             toast.current?.show({
                 severity: 'success',
                 summary: 'Ingreso Completado',
-                detail: `Se ingresaron ${creados.length} activos correctamente en el acta.`,
-                life: 3000
+                detail: `${data.insertados ?? activosValidos.length} bienes ingresados correctamente en el acta ${nuevaActa.referencia}.`,
+                life: 4000
             });
 
-            setActivosImportados(creados);
-            crearYRegistrarActa(creados);
-        } catch (error) {
-            console.error(error);
+            // Cargar activos actualizados en el contexto
+            cargarActivos().catch(console.error);
+
+            // Simular lista de activos importados para la pantalla final (datos del contexto)
+            setActivosImportados([]);
+            setCurrentStep(1);  // o navegar a éxito
+            handleLimpiarTodo();
+
+        } catch (error: any) {
+            console.error('Error en carga masiva:', error);
+            // Limpiar acta si fue creada pero la carga falló
+            if (actaCreadaId) {
+                try { await fetch(`/api/actas/${actaCreadaId}`, { method: 'DELETE' }); } catch (_) { /* noop */ }
+            }
             toast.current?.show({
                 severity: 'error',
                 summary: 'Error',
-                detail: 'Ocurrió un error al registrar los activos.',
-                life: 3000
+                detail: error.message || 'Ocurrió un error al registrar los activos.',
+                life: 4000
             });
         } finally {
             setImportando(false);
         }
     };
+
 
     // ─── Ingreso Manual: Handlers ───
     const handleAddBienManual = () => {
@@ -511,6 +615,7 @@ export const IngresoActivo: React.FC = () => {
                 itemPresupuestario: cabecera.itemPresupuestario || '',
                 partidaPresupuestaria: cabecera.partidaPresupuestaria || '',
                 numeroActa: '', 
+                cuentaContable: nuevoBien.cuentaContable || '',
                 marca: nuevoBien.marca!,
                 color: nuevoBien.color || '',
                 estadoActivo: nuevoBien.estadoActivo || 'BUE',
@@ -564,7 +669,7 @@ export const IngresoActivo: React.FC = () => {
         }
     };
 
-    const handleConfirmarImportacionManual = () => {
+    const handleConfirmarImportacionManual = async () => {
         if (bienesManuales.length === 0) return;
         setImportando(true);
         try {
@@ -583,7 +688,7 @@ export const IngresoActivo: React.FC = () => {
                     : `${cabecera.numeroComprobante}-${new Date(cabecera.fechaActa || new Date()).getFullYear()}`
             }));
 
-            const creados = agregarActivos(activosFinales);
+            const creados = await agregarActivos(activosFinales);
 
             toast.current?.show({
                 severity: 'success',
@@ -593,7 +698,7 @@ export const IngresoActivo: React.FC = () => {
             });
 
             setActivosImportados(creados);
-            crearYRegistrarActa(creados);
+            await crearYRegistrarActa(creados);
         } catch (error) {
             console.error(error);
             toast.current?.show({
@@ -639,6 +744,7 @@ export const IngresoActivo: React.FC = () => {
             ubicacion: '',
             tipoAdquisicion: '',
             numeroContrato: '',
+            cuentaContable: '',
             cargadoPresupuesto: false,
             itemPresupuestario: '',
             partidaPresupuestaria: '',
@@ -752,6 +858,17 @@ export const IngresoActivo: React.FC = () => {
                         {cabeceraErrors.numeroContrato && <small className="text-red-500 mt-1 block">{cabeceraErrors.numeroContrato}</small>}
                     </div>
                 )}
+
+                {/* Cuenta Contable */}
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Cuenta Contable</label>
+                    <InputText 
+                        value={cabecera.cuentaContable} 
+                        onChange={e => setCabecera(prev => ({ ...prev, cuentaContable: e.target.value }))} 
+                        placeholder="Ej: 141.01.03" 
+                        className="w-full" 
+                    />
+                </div>
 
                 {/* Tipo Comprobante */}
                 <div>
@@ -1137,7 +1254,7 @@ export const IngresoActivo: React.FC = () => {
                             severity="secondary" 
                             onClick={() => setCurrentStep(2)} 
                         />
-                        <span className="text-xs font-semibold text-slate-450 uppercase">Acta: {cabecera.rucProveedor || 'Individual'} - manual</span>
+                        <span className="text-xs font-semibold text-slate-450 uppercase">Acta: {cabecera.numeroComprobante || 'Individual'}</span>
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Ingreso Manual de Bienes</h2>
                     <p className="text-sm text-slate-500 dark:text-slate-450 mt-1">
@@ -1240,16 +1357,8 @@ export const IngresoActivo: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Switches de depreciación y garantía */}
-                            <div className="space-y-2 mt-2">
-                                <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">¿Aplica Depreciación?</span>
-                                    <InputSwitch 
-                                        checked={nuevoBien.depreciacionS_N === 'S'} 
-                                        onChange={e => setNuevoBien(prev => ({ ...prev, depreciacionS_N: e.value ? 'S' : 'N' }))} 
-                                    />
-                                </div>
-
+                            {/* Garantía */}
+                            <div className="mt-2">
                                 <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                                     <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">¿Tiene Garantía?</span>
                                     <InputSwitch 
@@ -1304,7 +1413,7 @@ export const IngresoActivo: React.FC = () => {
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Color</label>
-                                        <Dropdown value={nuevoBien.color} options={CATALOGOS.color} onChange={e => setNuevoBien(prev => ({ ...prev, color: e.value }))} placeholder="Color" className="w-full p-dropdown-sm" />
+                                        <InputText value={nuevoBien.color} onChange={e => setNuevoBien(prev => ({ ...prev, color: e.target.value }))} className="w-full p-inputtext-sm" placeholder="Ej: Blanco con gris" />
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Material</label>
@@ -1321,13 +1430,12 @@ export const IngresoActivo: React.FC = () => {
                                 </div>
                             )}
 
-                            <div className="pt-2">
+                            <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                                 <Button 
                                     label="Agregar Bien a Lista" 
                                     icon="pi pi-plus" 
-                                    severity="info" 
                                     onClick={handleAddBienManual} 
-                                    className="w-full font-bold p-button-sm shadow-md bg-indigo-600 hover:bg-indigo-700 text-white border-0 py-2.5" 
+                                    className="w-full" 
                                 />
                             </div>
                         </div>
@@ -1539,15 +1647,6 @@ export const IngresoActivo: React.FC = () => {
                                 options={CATALOGOS.estadoActivo}
                                 onChange={e => setEditData((prev: any) => ({ ...prev, estadoActivo: e.value }))} 
                                 className="w-full font-semibold"
-                            />
-                        </div>
-
-                        {/* Depreciación */}
-                        <div className="flex items-center justify-between pt-2">
-                            <span className="text-xs font-semibold text-slate-500 uppercase">¿Depreciación?</span>
-                            <InputSwitch 
-                                checked={editData.depreciacionS_N === 'S'} 
-                                onChange={e => setEditData((prev: any) => ({ ...prev, depreciacionS_N: e.value ? 'S' : 'N' }))} 
                             />
                         </div>
 

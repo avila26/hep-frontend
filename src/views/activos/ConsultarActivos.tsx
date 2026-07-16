@@ -432,6 +432,14 @@ export const ConsultarActivos: React.FC = () => {
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Descripción</div>
                                     <div className="mt-2 bg-slate-50 rounded p-3 text-slate-800">{selectedActivo.descripcion || '-'}</div>
                                 </div>
+                                <div className="col-span-full">
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Observación General (Acta)</div>
+                                    <div className="mt-2 bg-slate-50 rounded p-3 text-slate-800">{(selectedActivo as any).observacionGeneral || '-'}</div>
+                                </div>
+                                <div className="col-span-full">
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Observación Específica (Bien)</div>
+                                    <div className="mt-2 bg-slate-50 rounded p-3 text-slate-800">{(selectedActivo as any).observaciones || '-'}</div>
+                                </div>
                             </div>
                         </section>
 
@@ -439,6 +447,10 @@ export const ConsultarActivos: React.FC = () => {
                         <section className="mb-5">
                             <h3 className="text-sm uppercase tracking-normal text-slate-700 font-bold mb-2 border-b border-slate-200 pb-2">Identificación</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
+                                <div>
+                                    <div className="text-xs text-slate-700 uppercase tracking-normal rounded p-2">Institución Receptora</div>
+                                    <div className="text-sm font-medium text-slate-700 bg-slate-50 rounded p-2">{(selectedActivo as any).institucionReceptora || '-'}</div>
+                                </div>
                                 <div>
                                     <div className="text-xs text-slate-700 uppercase tracking-normal rounded p-2">Código Institucional</div>
                                     <div className="text-sm font-medium text-slate-700 bg-slate-50 rounded p-2">{selectedActivo.codigoInstitucional || '-'}</div>
@@ -448,13 +460,21 @@ export const ConsultarActivos: React.FC = () => {
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.numeroSerie || '-'}</div>
                                 </div>
                                 <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Código de Barras</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).codigoBarras || selectedActivo.numeroSerie || '-'}</div>
+                                </div>
+                                <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Código SBYE</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.codigoSBYE || '-'}</div>
                                 </div>
 
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Número de Acta</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Número de Comprobante / Acta</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.numeroActa || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Referencia de Acta</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).referenciaActa || '-'}</div>
                                 </div>
                             </div>
                         </section>
@@ -481,6 +501,10 @@ export const ConsultarActivos: React.FC = () => {
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Condición de Depreciación</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).condicionDepreciacion || '-'}</div>
                                 </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Aplica Depreciación</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).depreciacionS_N === 'S' ? 'Sí' : 'No'}</div>
+                                </div>
                             </div>
                         </section>
 
@@ -493,12 +517,16 @@ export const ConsultarActivos: React.FC = () => {
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.ubicacion || '-'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Responsable Entrega</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Responsable Entrega (Bien)</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.responsableEntrega || '-'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Administrador del Proceso</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.administradorDelProceso || '-'}</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Funcionario Receptor (Cabecera)</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).funcionarioReceptor || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Funcionario Entregador (Cabecera)</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).funcionarioEntregador || '-'}</div>
                                 </div>
                             </div>
                         </section>
@@ -508,8 +536,16 @@ export const ConsultarActivos: React.FC = () => {
                             <h3 className="text-sm uppercase tracking-normal text-slate-700 font-bold mb-2 border-b border-slate-200 pb-2">Información Financiera y Contractual</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
                                 <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Fecha del Acta</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.fechaAdquisicion ? new Date(selectedActivo.fechaAdquisicion).toLocaleDateString('es-ES') : '-'}</div>
+                                </div>
+                                <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Número de Contrato</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.numeroContrato || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Cuenta Contable</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.cuentaContable || '-'}</div>
                                 </div>
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Item Presupuestario</div>
@@ -521,21 +557,62 @@ export const ConsultarActivos: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor de Adquisición</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Tipo de Adquisición</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tipoAdquisicion || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Tipo de Comprobante</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tipoComprobante || '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Fecha de Comprobante</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).fechaComprobante ? new Date((selectedActivo as any).fechaComprobante).toLocaleDateString('es-ES') : '-'}</div>
+                                </div>
+
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor Total del Comprobante (Cabecera)</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).montoCompra != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format((selectedActivo as any).montoCompra) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor de Adquisición (Bien)</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.valorAdquisicion != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(selectedActivo.valorAdquisicion) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Descuento de Compra</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.descuentoCompra != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(selectedActivo.descuentoCompra) : '-'}</div>
                                 </div>
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor Unitario</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.valorUnitario != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(selectedActivo.valorUnitario) : '-'}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Fecha DNS</div>
-                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.fechaDNS ? new Date(selectedActivo.fechaDNS).toLocaleDateString('es-ES') : '-'}</div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor Total</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.valorTotal != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(selectedActivo.valorTotal) : '-'}</div>
                                 </div>
 
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2    ">Tiempo Vida Útil (años)</div>
                                     <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{selectedActivo.tiempoVidaUtil ?? '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor Contable</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).valorContable != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format((selectedActivo as any).valorContable) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor Residual</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).valorResidual != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format((selectedActivo as any).valorResidual) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Valor en Libros</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).valorEnLibros != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format((selectedActivo as any).valorEnLibros) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Depreciación Acumulada</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).valorDepreciacionAcumulada != null ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format((selectedActivo as any).valorDepreciacionAcumulada) : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Fecha Última Depreciación</div>
+                                    <div className="text-sm font-medium text-slate-800 bg-slate-50 rounded p-2">{(selectedActivo as any).fechaUltimaDepreciacion ? new Date((selectedActivo as any).fechaUltimaDepreciacion).toLocaleDateString('es-ES') : '-'}</div>
                                 </div>
                                 <div>
                                     <div className="text-xs text-slate-500 uppercase tracking-normal rounded p-2">Proveedor</div>

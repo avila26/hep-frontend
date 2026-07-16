@@ -16,7 +16,7 @@ interface BarcodeDownloadProps {
 export const downloadBarcodeAsPng = (activo: Activo): Promise<void> => {
     return new Promise((resolve) => {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        const barcodeValue = activo.codigoInstitucional || String(activo.idActivo);
+        const barcodeValue = activo.codigoBarras || activo.numeroSerie || activo.codigoInstitucional || String(activo.idActivo);
 
         try {
             JsBarcode(svg, barcodeValue, {
@@ -64,7 +64,7 @@ export const downloadBarcodeAsPng = (activo: Activo): Promise<void> => {
                 try {
                     const pngUrl = canvas.toDataURL('image/png');
                     const downloadLink = document.createElement('a');
-                    const filename = `barcode-${activo.codigoInstitucional || activo.idActivo}.png`;
+                    const filename = `barcode-${activo.codigoBarras || activo.numeroSerie || activo.codigoInstitucional || activo.idActivo}.png`;
                     downloadLink.href = pngUrl;
                     downloadLink.download = filename;
                     document.body.appendChild(downloadLink);
@@ -93,7 +93,7 @@ export const BarcodeDownload: React.FC<BarcodeDownloadProps> = ({ activo, compac
 
     useEffect(() => {
         if (svgRef.current && activo) {
-            const barcodeValue = activo.codigoInstitucional || String(activo.idActivo);
+            const barcodeValue = activo.codigoBarras || activo.numeroSerie || activo.codigoInstitucional || String(activo.idActivo);
             try {
                 JsBarcode(svgRef.current, barcodeValue, {
                     format: 'CODE128',
@@ -138,7 +138,7 @@ export const BarcodeDownload: React.FC<BarcodeDownloadProps> = ({ activo, compac
                 <div className="text-center mb-4">
                     <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">Código de barras</p>
                     <p className="text-base font-mono font-bold text-slate-800 dark:text-slate-200">
-                        {activo.codigoInstitucional || activo.idActivo}
+                        {activo.codigoBarras || activo.numeroSerie || activo.codigoInstitucional || activo.idActivo}
                     </p>
                 </div>
                 <Button

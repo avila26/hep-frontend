@@ -406,8 +406,6 @@ interface GarantiaMantenimientoProps {
     onTipoPostesionChange: (v: 'Propio' | 'ApoyoTecnologico') => void;
     tieneGarantia: boolean;
     onTieneGarantia: (v: boolean) => void;
-    fechaFinGarantia: Date | null | undefined;
-    onFechaFinGarantia: (v: Date | null) => void;
     frecuencia: string;
     onFrecuencia: (v: string) => void;
     responsable: string;
@@ -424,7 +422,7 @@ interface GarantiaMantenimientoProps {
 
 const GarantiaMantenimiento: React.FC<GarantiaMantenimientoProps> = ({
     tipoPostesion, onTipoPostesionChange,
-    tieneGarantia, onTieneGarantia, fechaFinGarantia, onFechaFinGarantia,
+    tieneGarantia, onTieneGarantia,
     frecuencia, onFrecuencia, responsable, onResponsable,
     empresaApoyo, ordenServicio, responsableOrden, fechaInicioProceso, fechaFinProceso, onApoyoChange,
     errorFechas, disabled = false
@@ -460,24 +458,13 @@ const GarantiaMantenimiento: React.FC<GarantiaMantenimientoProps> = ({
         </div>
 
         {tipoPostesion === 'Propio' ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="flex items-center gap-3">
                     <label className="text-xs font-medium">¿Tiene Garantía?</label>
                     <InputSwitch
                         checked={tieneGarantia}
                         onChange={e => onTieneGarantia(e.value ?? false)}
                         disabled={disabled}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-medium mb-1">Fecha Fin de Garantía</label>
-                    <Calendar
-                        value={fechaFinGarantia ? new Date(fechaFinGarantia) : null}
-                        onChange={e => onFechaFinGarantia(e.value as Date | null)}
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        disabled={!tieneGarantia || disabled}
-                        className="w-full text-sm"
                     />
                 </div>
                 <div>
@@ -753,8 +740,6 @@ export const AtributosEspecificosForm: React.FC<AtributosEspecificosFormProps> =
                     onTipoPostesionChange={v => onChange('tipoPostesion', v)}
                     tieneGarantia={values.tieneGarantia || false}
                     onTieneGarantia={v => onChange('tieneGarantia', v)}
-                    fechaFinGarantia={values.fechaFinGarantia}
-                    onFechaFinGarantia={v => onChange('fechaFinGarantia', v)}
                     frecuencia={values.frecuenciaMantenimientoPreventivo || ''}
                     onFrecuencia={v => onChange('frecuenciaMantenimientoPreventivo', v)}
                     responsable={values.responsableMantenimiento || ''}
@@ -1311,8 +1296,6 @@ export const AtributosEspecificosForm: React.FC<AtributosEspecificosFormProps> =
                 onTipoPostesionChange={v => onChange('tipoPostesion', v)}
                 tieneGarantia={values.tieneGarantia || false}
                 onTieneGarantia={v => onChange('tieneGarantia', v)}
-                fechaFinGarantia={values.fechaFinGarantia}
-                onFechaFinGarantia={v => onChange('fechaFinGarantia', v)}
                 frecuencia={values.frecuenciaMantenimientoPreventivo || ''}
                 onFrecuencia={v => onChange('frecuenciaMantenimientoPreventivo', v)}
                 responsable={values.responsableMantenimiento || ''}
@@ -1587,8 +1570,6 @@ export const AtributosEspecificosForm: React.FC<AtributosEspecificosFormProps> =
                     onTipoPostesionChange={v => onChange('tipoPostesion', v)}
                     tieneGarantia={values.tieneGarantia || false}
                     onTieneGarantia={v => onChange('tieneGarantia', v)}
-                    fechaFinGarantia={values.fechaFinGarantia}
-                    onFechaFinGarantia={v => onChange('fechaFinGarantia', v)}
                     frecuencia={values.frecuenciaMantenimientoPreventivo || ''}
                     onFrecuencia={v => onChange('frecuenciaMantenimientoPreventivo', v)}
                     responsable={values.responsableMantenimiento || ''}
@@ -1619,3 +1600,5 @@ export const AtributosEspecificosForm: React.FC<AtributosEspecificosFormProps> =
     if (especificoKey === 'AP') return renderAccessPointForm();
     return null;
 };
+
+export default AtributosEspecificosForm;

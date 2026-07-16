@@ -270,6 +270,7 @@ export interface Activo {
     itemPresupuestario: string;
     partidaPresupuestaria: string;
     numeroActa: string;
+    cuentaContable: string;
     marca: string;
     color: string;
     estadoActivo: string;
@@ -325,46 +326,28 @@ export interface CargaMasivaLog {
 interface ActivosContextType {
     activos: Activo[];
     cargasMasivas: CargaMasivaLog[];
-    agregarActivo: (activo: Omit<Activo, 'idActivo'>) => Activo;
-    agregarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[];
-    eliminarActivo: (idActivo: number) => void;
-    actualizarActivo: (activo: Activo) => void;
+    agregarActivo: (activo: Omit<Activo, 'idActivo'>) => Promise<Activo>;
+    agregarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Promise<Activo[]>;
+    eliminarActivo: (idActivo: number) => Promise<void>;
+    actualizarActivo: (activo: Activo) => Promise<void>;
     registrarCarga: (log: Omit<CargaMasivaLog, 'idCarga'>) => void;
+    cargarActivos: () => Promise<void>;
 }
 
 const ActivosContext = createContext<ActivosContextType | undefined>(undefined);
 
-const generateCodigoInstitucional = (existingActivos: Activo[]): string => {
-    const prefix = 'CI';
-    const year = new Date().getFullYear();
-    const existingNumbers = existingActivos
-        .map(activo => activo.codigoInstitucional)
-        .filter(code => typeof code === 'string' && code.startsWith(`${prefix}-${year}-`))
-        .map(code => {
-            const match = code.match(/CI-\d{4}-(\d+)/);
-            return match ? Number(match[1]) : null;
-        })
-        .filter((value): value is number => typeof value === 'number' && !isNaN(value));
-
-    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-    return `${prefix}-${year}-${String(nextNumber).padStart(4, '0')}`;
-};
-
 export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [activos, setActivos] = useState<Activo[]>(() => {
-        const activosGuardados = localStorage.getItem('activos_hep');
-        if (activosGuardados) {
-            try {
-                const parseAtributosEspecificos = (attrs: any) => {
-                    if (!attrs) return attrs;
-                    const copy = { ...attrs };
-                    if (copy.fechaFinGarantia) {
-                        copy.fechaFinGarantia = new Date(copy.fechaFinGarantia);
-                    }
-                    return copy;
-                };
+    const [activos, setActivos] = useState<Activo[]>([]);
+    const [cargasMasivas, setCargasMasivas] = useState<CargaMasivaLog[]>([]);
 
-                return JSON.parse(activosGuardados).map((a: any) => ({
+    // Cargar activos desde PostgreSQL vía API al montar
+    const cargarActivos = async () => {
+        try {
+            const res = await fetch('/api/activos');
+            if (res.ok) {
+                const data = await res.json();
+                // Reconstruir fechas
+                const parsed = data.map((a: any) => ({
                     ...a,
                     fechaAdquisicion: a.fechaAdquisicion ? new Date(a.fechaAdquisicion) : null,
                     fechaInicioGarantia: a.fechaInicioGarantia ? new Date(a.fechaInicioGarantia) : null,
@@ -372,85 +355,105 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     fechaInicioCobertura: a.fechaInicioCobertura ? new Date(a.fechaInicioCobertura) : null,
                     fechaFinCobertura: a.fechaFinCobertura ? new Date(a.fechaFinCobertura) : null,
                     fechaUltimaDepreciacion: a.fechaUltimaDepreciacion ? new Date(a.fechaUltimaDepreciacion) : null,
-                    atributosEspecificos: parseAtributosEspecificos(a.atributosEspecificos)
                 }));
-            } catch (error) {
-                console.error('Error al cargar activos:', error);
+                setActivos(parsed);
             }
+        } catch (error) {
+            console.error('Error al cargar activos:', error);
         }
-        return [];
-    });
+    };
 
-    const [cargasMasivas, setCargasMasivas] = useState<CargaMasivaLog[]>(() => {
+    useEffect(() => {
+        cargarActivos();
+    }, []);
+
+    // Cargas masivas siguen en localStorage
+    useEffect(() => {
         const cargasGuardadas = localStorage.getItem('cargas_masivas_hep');
         if (cargasGuardadas) {
             try {
-                return JSON.parse(cargasGuardadas).map((carga: CargaMasivaLog) => ({
+                setCargasMasivas(JSON.parse(cargasGuardadas).map((carga: CargaMasivaLog) => ({
                     ...carga,
                     fechaCarga: new Date(carga.fechaCarga)
-                }));
+                })));
             } catch (error) {
                 console.error('Error al cargar historial de cargas masivas:', error);
             }
         }
-        return [];
-    });
+    }, []);
 
     useEffect(() => {
-        localStorage.setItem('activos_hep', JSON.stringify(activos));
-    }, [activos]);
-
-    useEffect(() => {
-        localStorage.setItem('cargas_masivas_hep', JSON.stringify(cargasMasivas));
+        if (cargasMasivas.length > 0) {
+            localStorage.setItem('cargas_masivas_hep', JSON.stringify(cargasMasivas));
+        }
     }, [cargasMasivas]);
 
-    const agregarActivo = (activo: Omit<Activo, 'idActivo'>): Activo => {
-        const codigoInstitucional =
-            !activo.codigoInstitucional ||
-            activos.some(a => a.codigoInstitucional === activo.codigoInstitucional)
-                ? generateCodigoInstitucional(activos)
-                : activo.codigoInstitucional;
-
-        const nuevoActivo: Activo = {
-            ...activo,
-            codigoInstitucional,
-            idActivo: activos.length > 0 ? Math.max(...activos.map(a => a.idActivo)) + 1 : 1
+    const agregarActivo = async (activo: Omit<Activo, 'idActivo'>): Promise<Activo> => {
+        const res = await fetch('/api/activos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(activo)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al registrar activo');
+        }
+        const nuevoActivo = await res.json();
+        // Formatear fechas
+        const parsed = {
+            ...nuevoActivo,
+            fechaAdquisicion: nuevoActivo.fechaAdquisicion ? new Date(nuevoActivo.fechaAdquisicion) : null,
+            fechaInicioGarantia: nuevoActivo.fechaInicioGarantia ? new Date(nuevoActivo.fechaInicioGarantia) : null,
+            fechaFinGarantia: nuevoActivo.fechaFinGarantia ? new Date(nuevoActivo.fechaFinGarantia) : null,
         };
-
-        setActivos(prev => [...prev, nuevoActivo]);
-        return nuevoActivo;
+        setActivos(prev => [parsed, ...prev]);
+        return parsed;
     };
 
-    const agregarActivos = (nuevosActivosSinId: Omit<Activo, 'idActivo'>[]): Activo[] => {
+    const agregarActivos = async (nuevosActivosSinId: Omit<Activo, 'idActivo'>[]): Promise<Activo[]> => {
         const creados: Activo[] = [];
-        let currentList = [...activos];
-
         for (const activo of nuevosActivosSinId) {
-            const codigoInstitucional =
-                !activo.codigoInstitucional ||
-                currentList.some(a => a.codigoInstitucional === activo.codigoInstitucional)
-                    ? generateCodigoInstitucional(currentList)
-                    : activo.codigoInstitucional;
-
-            const nuevoActivo: Activo = {
-                ...activo,
-                codigoInstitucional,
-                idActivo: currentList.length > 0 ? Math.max(...currentList.map(a => a.idActivo)) + 1 : 1
-            };
-            currentList.push(nuevoActivo);
-            creados.push(nuevoActivo);
+            try {
+                const creado = await agregarActivo(activo);
+                creados.push(creado);
+            } catch (e) {
+                console.error('Error al registrar lote:', e);
+            }
         }
-
-        setActivos(currentList);
         return creados;
     };
 
-    const eliminarActivo = (idActivo: number) => {
+    const eliminarActivo = async (idActivo: number): Promise<void> => {
+        const res = await fetch(`/api/activos/${idActivo}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al eliminar el activo');
+        }
         setActivos(prev => prev.filter(a => a.idActivo !== idActivo));
     };
 
-    const actualizarActivo = (activo: Activo) => {
-        setActivos(prev => prev.map(a => (a.idActivo === activo.idActivo ? activo : a)));
+    const actualizarActivo = async (activo: Activo): Promise<void> => {
+        const res = await fetch(`/api/activos/${activo.idActivo}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(activo)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al actualizar el activo');
+        }
+        const actualizado = await res.json();
+        const parsed = {
+            ...actualizado,
+            fechaAdquisicion: actualizado.fechaAdquisicion ? new Date(actualizado.fechaAdquisicion) : null,
+            fechaInicioGarantia: actualizado.fechaInicioGarantia ? new Date(actualizado.fechaInicioGarantia) : null,
+            fechaFinGarantia: actualizado.fechaFinGarantia ? new Date(actualizado.fechaFinGarantia) : null,
+            fechaInicioCobertura: actualizado.fechaInicioCobertura ? new Date(actualizado.fechaInicioCobertura) : null,
+            fechaFinCobertura: actualizado.fechaFinCobertura ? new Date(actualizado.fechaFinCobertura) : null,
+        };
+        setActivos(prev => prev.map(a => (a.idActivo === parsed.idActivo ? parsed : a)));
     };
 
     const registrarCarga = (log: Omit<CargaMasivaLog, 'idCarga'>) => {
@@ -472,7 +475,8 @@ export const ActivosProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 agregarActivos,
                 eliminarActivo,
                 actualizarActivo,
-                registrarCarga
+                registrarCarga,
+                cargarActivos
             }}
         >
             {children}

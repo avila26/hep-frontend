@@ -2,50 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Activo } from './ActivosContext';
 
 // ─── Interfaces del modelo ────────────────────────────────────────────────────
-
-/** Nivel 3 — Una unidad física individual dentro de una línea del acta */
-export interface SerieActa {
-    idSerie: number;
-    numeroSerie: string;
-    estadoIndividual: 'Bueno' | 'Regular' | 'Dañado';
-    observacionIndividual?: string;
-    codigoBarras?: string; // generado al cerrar el acta
-    codigoSBYE?: string;
-    ubicacion?: string;
-    responsableEntrega?: string;
-    codigoInstitucional?: string;
-    documentoRespaldo?: string;
-    tieneCoberturaProveedor?: boolean;
-    nombreProveedor?: string;
-    fechaInicioCobertura?: Date | null;
-    fechaFinCobertura?: Date | null;
-}
-
-/** Nivel 2 — Un grupo de activos del mismo tipo dentro del acta */
-export interface LineaActa {
-    idLinea: number;
-    moduloDestino: string; // Computadoras / Impresoras / Teléfonos / CCTV / Access Points / Laboratorio
-    tipoActivo: string;
-    marca: string;
-    modelo: string;
-    cantidadDeclarada: number;
-    especificacionesTecnicas?: string;
-    estadoLlegada: 'Bueno' | 'Regular' | 'Dañado';
-    observacionLinea?: string;
-    series: SerieActa[];
-    color?: string;
-    material?: string;
-    dimension?: string;
-    descripcion?: string;
-    origenIngreso: 'Compra' | 'Donación' | 'Transferencia' | 'Otro';
-    motivoIngreso: 'Adquisición Nueva' | 'Reposición' | 'Ampliación' | 'Otro';
-    unidadMedida: 'Unidad' | 'Par' | 'Juego' | 'Otro';
-    condicionDepreciacion: 'Lineal' | 'Acelerada' | 'No aplica';
-    tiempoVidaUtil?: number | null;
-    atributosEspecificos?: any;
-    codigoSBYE?: string;
-}
-
 /** Nivel 1 — Encabezado del acta, contenedor de todas las líneas */
 export interface ActaIngreso {
     idActa: number;
@@ -56,6 +12,7 @@ export interface ActaIngreso {
     administradorOrdenCompra?: string; // solo si tipo = "Orden de compra"
     fechaOrdenCompra?: Date | null;    // solo si tipo = "Orden de compra"
     tieneGarantia: boolean;
+    tiempoGarantia?: string | number | null;
     fechaInicioGarantia?: Date | null;
     fechaFinGarantia?: Date | null;
     fechaIngreso: Date;
@@ -63,9 +20,9 @@ export interface ActaIngreso {
     responsableEntrega?: string;
     observacionGeneral?: string;
     estado: 'Borrador' | 'Cerrada';
-    lineas: LineaActa[];
     activosGenerados?: number[];       // idActivo[] creados al cerrar
     numeroContrato?: string;
+    cuentaContable?: string;
     itemPresupuestario?: string;
     partidaPresupuestaria?: string;
     valorAdquisicionTotal?: number | null;
@@ -83,303 +40,224 @@ export interface ActaIngreso {
     fechaSuscripcion?: Date | null;
     fechaVigencia?: Date | null;
     administradorContrato?: string;
+    institucionReceptora?: string;
+    ubicacion?: string;
+    tipoComprobante?: string;
+    rucProveedor?: string;
+    descuentoCompra?: number | null;
 }
 
-// ─── Tipos del contexto ────────────────────────────────────────────────────────
+// Tipos del contexto
 
-export interface ErrorValidacion {
-    campo?: string;
-    mensaje: string;
-}
+// Función helper para parsear fechas de string a Date
+const parseDatesActa = (acta: any): ActaIngreso => {
+    return {
+        ...acta,
+        fechaIngreso: acta.fechaIngreso ? new Date(acta.fechaIngreso) : new Date(),
+        fechaOrdenCompra: acta.fechaOrdenCompra ? new Date(acta.fechaOrdenCompra) : null,
+        tiempoGarantia: acta.tiempoGarantia ?? null,
+        fechaDNS: acta.fechaDNS ? new Date(acta.fechaDNS) : null,
+        fechaMemorando: acta.fechaMemorando ? new Date(acta.fechaMemorando) : null,
+        fechaActa: acta.fechaActa ? new Date(acta.fechaActa) : null,
+        fechaSuscripcion: acta.fechaSuscripcion ? new Date(acta.fechaSuscripcion) : null,
+        fechaVigencia: acta.fechaVigencia ? new Date(acta.fechaVigencia) : null,
+        lineas: (acta.lineas || []).map((linea: any) => ({
+            ...linea,
+            series: (linea.series || []).map((serie: any) => ({
+                ...serie,
+                fechaInicioCobertura: serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura) : null,
+                fechaFinCobertura: serie.fechaFinCobertura ? new Date(serie.fechaFinCobertura) : null,
+            }))
+        }))
+    };
+};
 
 interface ActasContextType {
     actas: ActaIngreso[];
-    crearActa: (datos: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'>) => ActaIngreso;
-    actualizarActa: (acta: ActaIngreso) => void;
-    eliminarActa: (idActa: number) => void;
+    crearActa: (datos: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'>) => Promise<ActaIngreso>;
+    actualizarActa: (acta: ActaIngreso) => Promise<void>;
+    eliminarActa: (idActa: number) => Promise<void>;
     cerrarActa: (
         actaParaCerrar: ActaIngreso,
         seriesExistentesEnSistema: Set<string>,
-        generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[]
-    ) => { success: boolean; errores: string[]; activosCreados?: Activo[] };
+        generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Promise<Activo[]>
+    ) => Promise<{ success: boolean; errores: string[]; activosCreados?: Activo[] }>;
 }
-
-// ─── Utilidades internas ──────────────────────────────────────────────────────
-
-const MODULO_PREFIX: Record<string, string> = {
-    'Computadoras': 'COMP',
-    'Impresoras': 'IMP',
-    'Teléfonos': 'TEL',
-    'CCTV': 'CAM',
-    'Access Points': 'AP',
-    'Laboratorio': 'LAB'
-};
-
-const generateReferenciaActa = (existentes: ActaIngreso[]): string => {
-    const year = new Date().getFullYear();
-    const nums = existentes
-        .map(a => a.referencia)
-        .filter(r => r.startsWith(`ACTA-${year}-`))
-        .map(r => { const m = r.match(/ACTA-\d{4}-(\d+)/); return m ? Number(m[1]) : 0; });
-    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `ACTA-${year}-${String(next).padStart(4, '0')}`;
-};
-
-const generateCodigoBarras = (modulo: string, codigosYaUsados: string[]): string => {
-    const prefix = MODULO_PREFIX[modulo] || 'GEN';
-    const year = new Date().getFullYear();
-    const existentes = codigosYaUsados
-        .filter(c => c && c.startsWith(`${prefix}-${year}-`))
-        .map(c => { const m = c.match(/-(\d+)$/); return m ? Number(m[1]) : 0; });
-    const next = existentes.length > 0 ? Math.max(...existentes) + 1 : 1;
-    return `${prefix}-${year}-${String(next).padStart(5, '0')}`;
-};
-
-/** Calcula la vigencia en texto legible */
-export const calcularVigenciaGarantia = (
-    inicio: Date | null | undefined,
-    fin: Date | null | undefined
-): { texto: string; nivel: 'vigente' | 'por_vencer' | 'vencida' | 'sin_datos' } => {
-    if (!inicio || !fin) return { texto: '—', nivel: 'sin_datos' };
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const finDate = new Date(fin);
-    finDate.setHours(0, 0, 0, 0);
-    if (finDate < hoy) return { texto: 'GARANTÍA VENCIDA', nivel: 'vencida' };
-    const dias = Math.floor((finDate.getTime() - hoy.getTime()) / 86400000);
-    if (dias <= 30) return { texto: `Vence en ${dias} día${dias !== 1 ? 's' : ''}`, nivel: 'por_vencer' };
-    const meses = Math.floor(dias / 30);
-    const años = Math.floor(meses / 12);
-    const mesesResto = meses % 12;
-    if (años > 0) {
-        const sufijo = mesesResto > 0 ? ` y ${mesesResto} mes${mesesResto > 1 ? 'es' : ''}` : '';
-        return { texto: `Vence en ${años} año${años > 1 ? 's' : ''}${sufijo}`, nivel: 'vigente' };
-    }
-    return { texto: `Vence en ${meses} mes${meses > 1 ? 'es' : ''}`, nivel: 'vigente' };
-};
-
-/** Reconstruye objetos Date desde JSON */
-const parseDatesActa = (raw: any): ActaIngreso => ({
-    ...raw,
-    fechaIngreso: raw.fechaIngreso ? new Date(raw.fechaIngreso) : new Date(),
-    fechaOrdenCompra: raw.fechaOrdenCompra ? new Date(raw.fechaOrdenCompra) : null,
-    fechaInicioGarantia: raw.fechaInicioGarantia ? new Date(raw.fechaInicioGarantia) : null,
-    fechaFinGarantia: raw.fechaFinGarantia ? new Date(raw.fechaFinGarantia) : null,
-    fechaDNS: raw.fechaDNS ? new Date(raw.fechaDNS) : null,
-    fechaMemorando: raw.fechaMemorando ? new Date(raw.fechaMemorando) : null,
-    fechaActa: raw.fechaActa ? new Date(raw.fechaActa) : null,
-    fechaSuscripcion: raw.fechaSuscripcion ? new Date(raw.fechaSuscripcion) : null,
-    fechaVigencia: raw.fechaVigencia ? new Date(raw.fechaVigencia) : null,
-    lineas: raw.lineas ? raw.lineas.map((linea: any) => ({
-        ...linea,
-        series: linea.series ? linea.series.map((serie: any) => ({
-            ...serie,
-            fechaInicioCobertura: serie.fechaInicioCobertura ? new Date(serie.fechaInicioCobertura) : null,
-            fechaFinCobertura: serie.fechaFinCobertura ? new Date(serie.fechaFinCobertura) : null
-        })) : []
-    })) : []
-});
-
-// ─── Context ──────────────────────────────────────────────────────────────────
 
 const ActasContext = createContext<ActasContextType | undefined>(undefined);
 
-export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [actas, setActas] = useState<ActaIngreso[]>(() => {
-        const stored = localStorage.getItem('actas_ingreso_hep');
-        if (stored) {
-            try {
-                return JSON.parse(stored).map(parseDatesActa);
-            } catch (e) {
-                console.error('Error al cargar actas de ingreso:', e);
-            }
+
+export interface VigenciaGarantia {
+    nivel: 'vigente' | 'por_vencer' | 'vencida' | 'sin_datos';
+    texto: string;
+}
+
+export function calcularVigenciaGarantia(
+    fechaInicio: Date | string | null | undefined,
+    fechaFin: Date | string | null | undefined
+): VigenciaGarantia {
+    if (!fechaInicio || !fechaFin) {
+        return { nivel: 'sin_datos', texto: 'Sin datos' };
+    }
+
+    const inicio = fechaInicio instanceof Date ? fechaInicio : new Date(fechaInicio);
+    const fin = fechaFin instanceof Date ? fechaFin : new Date(fechaFin);
+
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+        return { nivel: 'sin_datos', texto: 'Sin datos' };
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const finNormalizado = new Date(fin);
+    finNormalizado.setHours(0, 0, 0, 0);
+
+    if (finNormalizado < hoy) {
+        const diffTime = Math.abs(hoy.getTime() - finNormalizado.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        let texto = 'Vencida';
+        if (diffDays < 30) {
+            texto = `Vencida hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+        } else {
+            const meses = Math.floor(diffDays / 30);
+            texto = `Vencida hace ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
         }
-        return [];
-    });
+        return { nivel: 'vencida', texto };
+    }
 
-    // Persistencia automática
-    useEffect(() => {
-        localStorage.setItem('actas_ingreso_hep', JSON.stringify(actas));
-    }, [actas]);
+    const diffTime = finNormalizado.getTime() - hoy.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    const crearActa = (datos: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'>): ActaIngreso => {
-        const nuevaActa: ActaIngreso = {
-            ...datos,
-            idActa: actas.length > 0 ? Math.max(...actas.map(a => a.idActa)) + 1 : 1,
-            referencia: generateReferenciaActa(actas),
-            estado: 'Borrador'
+    if (diffDays <= 30) {
+        return { 
+            nivel: 'por_vencer', 
+            texto: `Por vencer (${diffDays} ${diffDays === 1 ? 'día' : 'días'} restantes)` 
         };
-        setActas(prev => [...prev, nuevaActa]);
+    }
+
+    const mesesRestantes = Math.floor(diffDays / 30);
+    return { 
+        nivel: 'vigente', 
+        texto: `Vigente (${mesesRestantes} ${mesesRestantes === 1 ? 'mes' : 'meses'} restantes)` 
+    };
+}
+
+export const ActasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [actas, setActas] = useState<ActaIngreso[]>([]);
+
+    // Cargar actas desde PostgreSQL vía API al montar
+    const cargarActas = async () => {
+        try {
+            const res = await fetch('/api/actas');
+            if (res.ok) {
+                const data = await res.json();
+                setActas(data.map(parseDatesActa));
+            }
+        } catch (e) {
+            console.error('Error al cargar actas:', e);
+        }
+    };
+
+    useEffect(() => {
+        cargarActas();
+    }, []);
+
+    const crearActa = async (datos: Omit<ActaIngreso, 'idActa' | 'referencia' | 'estado' | 'activosGenerados'>): Promise<ActaIngreso> => {
+        const res = await fetch('/api/actas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al crear acta');
+        }
+        const nuevaActa = parseDatesActa(await res.json());
+        setActas(prev => [nuevaActa, ...prev]);
         return nuevaActa;
     };
 
-    const actualizarActa = (acta: ActaIngreso) => {
-        setActas(prev => prev.map(a => a.idActa === acta.idActa ? acta : a));
+    const actualizarActa = async (acta: ActaIngreso): Promise<void> => {
+        const res = await fetch(`/api/actas/${acta.idActa}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(acta)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al actualizar acta');
+        }
+        const actualizada = parseDatesActa(await res.json());
+        setActas(prev => prev.map(a => a.idActa === actualizada.idActa ? actualizada : a));
     };
 
-    const eliminarActa = (idActa: number) => {
+    const eliminarActa = async (idActa: number): Promise<void> => {
+        const res = await fetch(`/api/actas/${idActa}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Error al eliminar acta');
+        }
         setActas(prev => prev.filter(a => a.idActa !== idActa));
     };
 
-    const cerrarActa = (
+    const cerrarActa = async (
         actaParaCerrar: ActaIngreso,
-        seriesExistentesEnSistema: Set<string>,
-        generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Activo[]
-    ): { success: boolean; errores: string[]; activosCreados?: Activo[] } => {
-        const acta = { ...actaParaCerrar };
+        _seriesExistentesEnSistema: Set<string>,
+        _generarActivos: (activos: Omit<Activo, 'idActivo'>[]) => Promise<Activo[]>
+    ): Promise<{ success: boolean; errores: string[]; activosCreados?: Activo[] }> => {
+        let acta = { ...actaParaCerrar };
+        
+        // Si el acta no tiene idActa, la guardamos antes en la BD
         if (!acta.idActa) {
-            acta.idActa = actas.length > 0 ? Math.max(...actas.map(a => a.idActa)) + 1 : 1;
-            acta.referencia = generateReferenciaActa(actas);
-            acta.estado = 'Borrador';
-        }
-        if (acta.estado === 'Cerrada') return { success: false, errores: ['El acta ya está cerrada'] };
-
-        const errores: string[] = [];
-        // ── Validaciones de encabezado ──
-        const labelDoc =
-            acta.tipoIngreso === 'Orden de compra' ? 'N.º de Orden de Compra' :
-            acta.tipoIngreso === 'Memorando de ingreso' ? 'N.º de Memorando' :
-            acta.tipoIngreso === 'Acta de Entrega-Recepción' ? 'N.º de Acta' :
-            acta.tipoIngreso === 'Contrato' ? 'N.º de Contrato' : 'N.º de orden/memorando';
-
-        if (!acta.numeroOrdenMemorandum?.trim()) {
-            errores.push(`El ${labelDoc} es obligatorio`);
-        }
-
-        if (acta.tipoIngreso === 'Orden de compra') {
-            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora es obligatoria');
-        } else if (acta.tipoIngreso === 'Memorando de ingreso') {
-            if (!acta.fechaMemorando) errores.push('La fecha del memorando es obligatoria');
-            if (!acta.remitenteOrigen?.trim()) errores.push('El remitente / unidad u institución de origen es obligatorio');
-        } else if (acta.tipoIngreso === 'Acta de Entrega-Recepción') {
-            if (!acta.fechaActa) errores.push('La fecha del acta es obligatoria');
-            if (!acta.funcionarioReceptor?.trim()) errores.push('El funcionario receptor es obligatorio');
-            if (!acta.funcionarioEntregador?.trim()) errores.push('El funcionario entregador es obligatorio');
-            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora / institución es obligatoria');
-        } else if (acta.tipoIngreso === 'Contrato') {
-            if (!acta.fechaSuscripcion) errores.push('La fecha de suscripción es obligatoria');
-            if (!acta.administradorContrato?.trim()) errores.push('El administrador del contrato es obligatorio');
-            if (!acta.empresaProveedora?.trim()) errores.push('La empresa proveedora es obligatoria');
-        }
-
-        if (!acta.tecnicoReceptor?.trim()) errores.push('El técnico receptor es obligatorio');
-        if (!acta.responsableEntrega?.trim()) errores.push('El responsable de entrega es obligatorio');
-
-        if (acta.tieneGarantia) {
-            if (!acta.fechaInicioGarantia) errores.push('Falta la fecha de inicio de garantía');
-            if (!acta.fechaFinGarantia) errores.push('Falta la fecha fin de garantía');
-            if (acta.fechaInicioGarantia && acta.fechaFinGarantia
-                && acta.fechaFinGarantia <= acta.fechaInicioGarantia) {
-                errores.push('La fecha fin de garantía debe ser posterior a la de inicio');
+            try {
+                acta = await crearActa(acta);
+            } catch (e: any) {
+                return { success: false, errores: [e.message] };
             }
         }
-        if (acta.tipoIngreso === 'Orden de compra' && acta.fechaOrdenCompra
-            && acta.fechaInicioGarantia && acta.fechaOrdenCompra > acta.fechaInicioGarantia) {
-            errores.push('La fecha de orden de compra no puede ser posterior al inicio de garantía');
-        }
 
-        // ── Validaciones de líneas y series ──
-        if (acta.lineas.length === 0) errores.push('El acta debe tener al menos una línea');
-
-        acta.lineas.forEach((linea, idx) => {
-            const n = idx + 1;
-            if (linea.series.length === 0) {
-                errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}): sin series registradas`);
-            } else if (linea.series.length !== linea.cantidadDeclarada) {
-                errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}): declara ${linea.cantidadDeclarada} unidad${linea.cantidadDeclarada !== 1 ? 'es' : ''} pero tiene ${linea.series.length} serie${linea.series.length !== 1 ? 's' : ''}`);
-            }
-            linea.series.forEach((s, sIdx) => {
-                const serieDesc = s.numeroSerie?.trim() ? `"${s.numeroSerie}"` : `#${sIdx + 1}`;
-                if (!s.numeroSerie?.trim()) {
-                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie #${sIdx + 1}: falta el número de serie`);
-                } else if (seriesExistentesEnSistema.has(s.numeroSerie)) {
-                    errores.push(`Serie "${s.numeroSerie}" (Línea ${n}): ya existe en el sistema`);
-                }
-                if (!s.codigoSBYE?.trim()) {
-                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: falta definir el Código SBYE`);
-                }
-                if (!s.ubicacion?.trim()) {
-                    errores.push(`Línea ${n} (${linea.tipoActivo || 'Sin Nombre'}), serie ${serieDesc}: la ubicación no está asignada`);
-                }
-            });
-        });
-
-        if (errores.length > 0) return { success: false, errores };
-
-        // ── Generación de códigos de barras y activos ──
-        const codigosUsados: string[] = actas
-            .flatMap(a => a.lineas.flatMap(l => l.series.map(s => s.codigoBarras || '')))
-            .filter(Boolean);
-
-        const activosACrear: Omit<Activo, 'idActivo'>[] = [];
-        const actaActualizada: ActaIngreso = {
-            ...acta,
-            lineas: acta.lineas.map(linea => ({
-                ...linea,
-                series: linea.series.map(serie => {
-                    const cb = generateCodigoBarras(linea.moduloDestino, codigosUsados);
-                    codigosUsados.push(cb);
-
-                    activosACrear.push({
-                        codigoInstitucional: serie.codigoInstitucional || cb,
-                        nombre: linea.tipoActivo,
-                        numeroSerie: serie.numeroSerie,
-                        descripcion: linea.descripcion || linea.especificacionesTecnicas || '',
-                        modelo: linea.modelo,
-                        material: linea.material || '',
-                        fechaAdquisicion: acta.fechaIngreso,
-                        responsableEntrega: acta.responsableEntrega || acta.tecnicoReceptor,
-                        dimension: linea.dimension || '',
-                        numeroContrato: acta.numeroContrato || '',
-                        valorAdquisicion: acta.valorAdquisicionTotal ?? null,
-                        valorUnitario: acta.valorUnitario ?? null,
-                        valorTotal: acta.valorUnitario ?? null,
-                        codigoSBYE: serie.codigoSBYE || '',
-                        fechaDNS: acta.fechaDNS ? new Date(acta.fechaDNS).toISOString() : '',
-                        tiempoVidaUtil: linea.tiempoVidaUtil ?? null,
-                        bloqueado: acta.bloqueado || false,
-                        administradorDelProceso: 
-                            acta.tipoIngreso === 'Orden de compra' ? (acta.administradorOrdenCompra || '') :
-                            acta.tipoIngreso === 'Contrato' ? (acta.administradorContrato || '') : '',
-                        itemPresupuestario: acta.itemPresupuestario || '',
-                        partidaPresupuestaria: acta.partidaPresupuestaria || '',
-                        numeroActa: acta.referencia,
-                        marca: linea.marca,
-                        color: linea.color || '',
-                        estadoActivo: linea.estadoLlegada === 'Bueno' ? 'Bueno' : linea.estadoLlegada === 'Regular' ? 'Regular' : 'Malo', // Match exact strings in RegistrarActivo.tsx catalog or database mapping if BUE/REG/MAL
-                        ubicacion: serie.ubicacion || '',
-                        atributosEspecificos: linea.atributosEspecificos || null,
-                        // Campos del acta
-                        idActa: acta.idActa,
-                        codigoBarras: cb,
-                        tieneGarantia: acta.tieneGarantia,
-                        fechaInicioGarantia: acta.fechaInicioGarantia ?? null,
-                        fechaFinGarantia: acta.fechaFinGarantia ?? null,
-                        // Campos de cobertura de proveedor
-                        tieneCoberturaProveedor: serie.tieneCoberturaProveedor,
-                        nombreProveedor: serie.nombreProveedor,
-                        fechaInicioCobertura: serie.fechaInicioCobertura ?? null,
-                        fechaFinCobertura: serie.fechaFinCobertura ?? null
-                    });
-
-                    return { ...serie, codigoBarras: cb };
+        try {
+            // Llamar al API de cierre de actas (que ejecuta fn_cerrar_acta_ingreso en Postgres)
+            const res = await fetch('/api/actas/cerrar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idActa: acta.idActa,
+                    usuario: acta.tecnicoReceptor || 'Usuario Sistema'
                 })
-            }))
-        };
+            });
 
-        const activosCreados = generarActivos(activosACrear);
-        actaActualizada.estado = 'Cerrada';
-        actaActualizada.activosGenerados = activosCreados.map(a => a.idActivo);
+            const data = await res.json();
 
-        setActas(prev => {
-            const existe = prev.some(a => a.idActa === actaActualizada.idActa);
-            if (existe) {
-                return prev.map(a => a.idActa === actaActualizada.idActa ? actaActualizada : a);
-            } else {
-                return [...prev, actaActualizada];
+            if (!res.ok) {
+                return { 
+                    success: false, 
+                    errores: [data.message || data.error || 'Error al procesar el cierre en la BD'] 
+                };
             }
-        });
-        return { success: true, errores: [], activosCreados };
+
+            // Recargar actas para reflejar el estado 'Cerrada' en el listado
+            await cargarActas();
+
+            // Retornar éxito. Generamos un arreglo vacío del tamaño de activos creados
+            // para que la interfaz muestre el conteo de hojas de vida correctamente.
+            const fakeActivos = Array(data.activosCreadosCount || 0).fill({});
+
+            return { 
+                success: true, 
+                errores: [], 
+                activosCreados: fakeActivos as any[] 
+            };
+        } catch (error: any) {
+            console.error('Error al cerrar acta:', error);
+            return { 
+                success: false, 
+                errores: ['Error de conexión al servidor: ' + error.message] 
+            };
+        }
     };
 
     return (

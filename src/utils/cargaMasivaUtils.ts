@@ -67,16 +67,34 @@ export const parseFecha = (valor: unknown): Date | null => {
     }
 
     const str = textoCelda(valor);
-    const match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (match) {
-        const day = parseInt(match[1], 10);
-        const month = parseInt(match[2], 10) - 1;
-        const year = parseInt(match[3], 10);
+
+    // dd/mm/aaaa
+    const matchDMY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (matchDMY) {
+        const day = parseInt(matchDMY[1], 10);
+        const month = parseInt(matchDMY[2], 10) - 1;
+        const year = parseInt(matchDMY[3], 10);
         const fecha = new Date(year, month, day);
         if (fecha.getFullYear() === year && fecha.getMonth() === month && fecha.getDate() === day) {
             return fecha;
         }
     }
+
+    // aaaa-mm-dd (ISO)
+    const matchISO = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (matchISO) {
+        const year = parseInt(matchISO[1], 10);
+        const month = parseInt(matchISO[2], 10) - 1;
+        const day = parseInt(matchISO[3], 10);
+        const fecha = new Date(year, month, day);
+        if (fecha.getFullYear() === year && fecha.getMonth() === month && fecha.getDate() === day) {
+            return fecha;
+        }
+    }
+
+    // Intentar parseado nativo como fallback
+    const fallback = new Date(str);
+    if (!isNaN(fallback.getTime())) return fallback;
 
     return null;
 };
@@ -183,7 +201,11 @@ export const leerFilasExcel = async (archivo: File): Promise<Record<string, unkn
     const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
     const sheetName = workbook.SheetNames.includes('2. BIENES MUEBLES') ? '2. BIENES MUEBLES' : workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
+    // range:5 → fila 6 (1-indexed) contiene los encabezados, fila 7+ los datos
     const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { range: 5, defval: '' });
+    if (rawRows.length > 0) {
+        console.log('[CargaMasiva] Columnas detectadas en el Excel:', Object.keys(rawRows[0]));
+    }
     return rawRows.map(normalizarFilaExcel);
 };
 
@@ -253,18 +275,16 @@ export const validarFilaOficial = (
     if (!fechaIngresoRaw || celdaVacia(fechaIngresoRaw)) {
         errores.push('El campo "Fecha de ingreso" es obligatorio');
     } else if (!fechaIngreso) {
-        errores.push('El campo "Fecha de ingreso" no tiene un formato válido (dd/mm/aaaa)');
-    } else if (fechaIngreso > new Date()) {
-        errores.push('El campo "Fecha de ingreso" no puede ser futura');
+        errores.push('El campo "Fecha de ingreso" no tiene un formato válido (dd/mm/aaaa o aaaa-mm-dd)');
     }
 
     if (!estado) {
         errores.push('El campo "Estado" es obligatorio');
     } else {
-        const estNorm = estado.toLowerCase();
-        if (estNorm !== 'bueno' && estNorm !== 'regular' && estNorm !== 'malo' &&
-            estNorm !== 'bue' && estNorm !== 'reg' && estNorm !== 'mal') {
-            errores.push('El campo "Estado" debe ser Bueno, Regular o Malo');
+        const estNorm = estado.toUpperCase().trim();
+        const estadosValidos = ['BUENO', 'REGULAR', 'MALO', 'DAÑADO', 'DANADO', 'BUE', 'REG', 'MAL', 'DAN', 'B', 'R', 'M'];
+        if (!estadosValidos.includes(estNorm)) {
+            errores.push(`El campo "Estado" debe ser "BUENO", "REGULAR" o "MALO" (se recibió: "${estado}")`);
         }
     }
 
@@ -272,15 +292,23 @@ export const validarFilaOficial = (
         errores.push('El campo "Costo de Adquisición" es obligatorio y debe ser un número mayor o igual a 0');
     }
 
-    const dSN = depreciacionSN.trim();
-    if (!dSN || (dSN !== 'S' && dSN !== 'N' && dSN !== 'SI' && dSN !== 'NO' && dSN !== 'SÍ')) {
-        errores.push('El campo "Depreciación (S/N)" debe ser "S" o "N"');
+    // Normalizar S/N: aceptar S, SI, SÍ, N, NO (con o sin espacios, mayúsculas)
+    const normalizarSN = (v: string): 'S' | 'N' | null => {
+        const clean = v.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (clean === 'S' || clean === 'SI' || clean === 'SÍ' || clean === 'YES') return 'S';
+        if (clean === 'N' || clean === 'NO' || clean === 'NOT') return 'N';
+        return null;
+    };
+
+    const dSN_norm = normalizarSN(depreciacionSN);
+    if (!depreciacionSN.trim() || dSN_norm === null) {
+        errores.push(`El campo "Depreciación (S/N)" debe ser "S" o "N" (se recibió: "${depreciacionSN}")`);
     }
 
-    const gSN = garantiaSN.trim();
-    if (!gSN || (gSN !== 'S' && gSN !== 'N' && gSN !== 'SI' && gSN !== 'NO' && gSN !== 'SÍ')) {
-        errores.push('El campo "Garantía (S/N)" debe ser "S" o "N"');
-    } else if ((gSN === 'S' || gSN === 'SI' || gSN === 'SÍ') && !tiempoGarantia) {
+    const gSN_norm = normalizarSN(garantiaSN);
+    if (!garantiaSN.trim() || gSN_norm === null) {
+        errores.push(`El campo "Garantía (S/N)" debe ser "S" o "N" (se recibió: "${garantiaSN}")`);
+    } else if (gSN_norm === 'S' && !tiempoGarantia) {
         errores.push('El campo "Tiempo de Garantía" es obligatorio si tiene garantía');
     }
 
@@ -317,8 +345,8 @@ export const validarFilaOficial = (
         errores.push('El campo "Fecha última depreciación" no tiene un formato válido (dd/mm/aaaa)');
     }
 
-    if (vidaUtil !== null && (vidaUtil < 0 || !Number.isInteger(vidaUtil))) {
-        errores.push('El campo "Vida Útil" debe ser un número entero mayor o igual a 0');
+    if (vidaUtil !== null && vidaUtil < 0) {
+        errores.push('El campo "Vida Útil" debe ser un número mayor o igual a 0');
     }
 
     if (errores.length > 0) {
@@ -330,14 +358,19 @@ export const validarFilaOficial = (
         };
     }
 
-    // Mapear estado
-    let estadoActivo = 'BUE';
-    if (estado.toLowerCase().startsWith('reg')) estadoActivo = 'REG';
-    if (estado.toLowerCase().startsWith('mal')) estadoActivo = 'MAL';
+    // Mapear estado → código interno
+    let estadoActivo = 'BUENO';
+    const estUp = estado.toUpperCase().trim();
+    if (estUp.startsWith('REG') || estUp === 'R') estadoActivo = 'REGULAR';
+    else if (estUp.startsWith('MAL') || estUp === 'M') estadoActivo = 'MALO';
+    else if (estUp.startsWith('DA') || estUp === 'D') estadoActivo = 'DAÑADO';
 
-    // Mapear depreciacion y garantia
-
-    const tieneGarantia = (garantiaSN === 'S' || garantiaSN === 'SI' || garantiaSN === 'SÍ');
+    // Normalizar S/N para garantia y depreciacion
+    const normalizarSN2 = (v: string): string => {
+        const clean = v.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return (clean === 'S' || clean === 'SI') ? 'S' : 'N';
+    };
+    const tieneGarantia = normalizarSN2(garantiaSN) === 'S';
 
     const activosParaCodigo = [...activosExistentes, ...activosAcumulados];
     const codigoInstitucional = generateCodigoInstitucional(activosParaCodigo);
@@ -367,6 +400,7 @@ export const validarFilaOficial = (
         itemPresupuestario: '',
         partidaPresupuestaria: '',
         numeroActa: noActa,
+        cuentaContable: '',
         marca: marcaNormalizada,
         color: color || '',
         estadoActivo,
@@ -376,7 +410,7 @@ export const validarFilaOficial = (
         fechaInicioCobertura: null,
         fechaFinCobertura: null,
         
-        depreciacionS_N: depreciacionSN,
+        depreciacionS_N: normalizarSN2(depreciacionSN),
         tieneGarantia,
         tiempoGarantia: tiempoGarantia || null,
         valorContable,
