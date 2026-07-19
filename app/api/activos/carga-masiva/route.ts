@@ -497,6 +497,16 @@ export async function POST(request: NextRequest) {
             idCarga = cargaRows[0].id_carga as number;
 
             // 4d. Insertar activos
+            const activosInsertados: Array<{
+                idActivo: number;
+                nombre: string;
+                numeroSerie: string;
+                codigoInstitucional: string;
+                codigoSBYE: string | null;
+                codigoBarras: string;
+                marca: string;
+            }> = [];
+
             for (const f of filasParsadas) {
                 const acta = actasMap.get(f.noActa)!;
 
@@ -513,7 +523,7 @@ export async function POST(request: NextRequest) {
                 );
                 const codigoBarras: string = cbRows[0].code;
 
-                await client.query(
+                const { rows: insertedRows } = await client.query(
                     `INSERT INTO public.activos (
                         codigo_institucional, nombre, numero_serie, descripcion, modelo,
                         material, fecha_adquisicion, responsable_entrega, dimension,
@@ -526,7 +536,7 @@ export async function POST(request: NextRequest) {
                     ) VALUES (
                         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
                         $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30
-                    )`,
+                    ) RETURNING id_activo, nombre, numero_serie, codigo_institucional, codigo_sbye, codigo_barras, marca`,
                     [
                         codigoInstitucional,                                          // $1
                         f.nombreBien,                                                  // $2
@@ -560,6 +570,19 @@ export async function POST(request: NextRequest) {
                         codigoBarras                                                   // $30
                     ]
                 );
+
+                if (insertedRows.length > 0) {
+                    const row = insertedRows[0];
+                    activosInsertados.push({
+                        idActivo: row.id_activo,
+                        nombre: row.nombre,
+                        numeroSerie: row.numero_serie,
+                        codigoInstitucional: row.codigo_institucional,
+                        codigoSBYE: row.codigo_sbye,
+                        codigoBarras: row.codigo_barras,
+                        marca: row.marca,
+                    });
+                }
             }
 
             await client.query('COMMIT');
@@ -569,6 +592,7 @@ export async function POST(request: NextRequest) {
                 mensaje: `Importación exitosa: ${filasParsadas.length} bienes insertados en el inventario.`,
                 insertados: filasParsadas.length,
                 idCarga,
+                activosCreados: activosInsertados,
             });
         } catch (err: any) {
             await client.query('ROLLBACK');

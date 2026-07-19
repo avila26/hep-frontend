@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { AutocompleteInput } from '../../components/AutocompleteInput';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -409,12 +410,14 @@ const Preventivos: React.FC = () => {
   const headerToolbarRight = () => {
     return (
       <IconField iconPosition="left">
-        <InputIcon className="pi pi-search" />
-        <InputText
-          type="search"
+        <InputIcon className="pi pi-search" style={{ zIndex: 1 }} />
+        <AutocompleteInput
+          table="activos"
+          column="codigo_institucional"
           value={globalFilter}
-          onChange={e => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
+          onChange={setGlobalFilter}
+          placeholder="Buscar código..."
+          className="pl-[2.2rem]"
         />
       </IconField>
     );
@@ -568,13 +571,14 @@ const Preventivos: React.FC = () => {
                     Buscar activo
                   </label>
                   <IconField iconPosition="left" className="w-full">
-                    <InputIcon className="pi pi-search" />
-                    <InputText
-                      id="searchFilter"
+                    <InputIcon className="pi pi-search" style={{ zIndex: 1 }} />
+                    <AutocompleteInput
+                      table="activos"
+                      column="nombre"
                       value={filtros.busqueda}
-                      onChange={e => setFiltros(prev => ({ ...prev, busqueda: e.target.value }))}
-                      placeholder="Código, nombre o serie..."
-                      className="w-full"
+                      onChange={val => setFiltros(prev => ({ ...prev, busqueda: val }))}
+                      placeholder="Nombre del activo..."
+                      className="w-full pl-[2.2rem]"
                     />
                   </IconField>
                 </div>

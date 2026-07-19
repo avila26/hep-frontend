@@ -8,6 +8,7 @@ import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
+import { AutocompleteInput } from '../../components/AutocompleteInput';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { useActas, ActaIngreso } from '../../context/ActasContext';
@@ -107,6 +108,7 @@ const ConsultarActas: React.FC = () => {
                         { label: 'Migración inicial', value: 'Migración inicial' }
                     ]}
                     onChange={e => setFiltroTipo(e.value)}
+                    placeholder="Filtrar por tipo..."
                     style={{ width: 190 }}
                     className="text-sm"
                 />
@@ -116,12 +118,14 @@ const ConsultarActas: React.FC = () => {
                     placeholder="Hasta" dateFormat="dd/mm/yy" showIcon style={{ width: 150 }} />
                 <div style={{ position: 'relative' }}>
                     <i className="pi pi-search" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
-                    <InputText
-                        type="search"
+                    <AutocompleteInput
+                        table="actas_ingreso"
+                        column="referencia"
                         value={globalFilter}
-                        onChange={e => setGlobalFilter(e.target.value)}
+                        onChange={setGlobalFilter}
                         placeholder="N.º Comprobante / Acta..."
-                        style={{ paddingLeft: '2.2rem', width: 230 }}
+                        className="w-[230px]"
+                        inputClassName="w-full !pl-[2.1rem]"
                     />
                 </div>
             </div>

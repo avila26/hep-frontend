@@ -15,7 +15,8 @@ import { Divider } from 'primereact/divider';
 import { FileUpload, FileUploadHandlerEvent } from 'primereact/fileupload';
 import { useActivos, Activo } from '../../context/ActivosContext';
 import { useActas, SerieActa, LineaActa, ActaIngreso } from '../../context/ActasContext';
-import { BarcodeDownload, downloadBarcodeAsPng } from '../../components/BarcodeDownload';
+import { BarcodeDownload } from '../../components/BarcodeDownload';
+import { generarPdfCodigosMasivos } from '../../utils/generateBarcodesPdf';
 import { 
     CATALOGOS, 
     CATALOGO_PROVEEDORES 
@@ -143,6 +144,7 @@ export const IngresoActivo: React.FC = () => {
     // ─── Pantalla Final / Éxito ───
     const [activosImportados, setActivosImportados] = useState<Activo[]>([]);
     const [descargandoTodos, setDescargandoTodos] = useState(false);
+    const [actaImportadaRef, setActaImportadaRef] = useState<string>('');
 
     // Autocompletar RUC
     const handleRucChange = (val: string) => {
@@ -541,13 +543,27 @@ export const IngresoActivo: React.FC = () => {
                 life: 4000
             });
 
-            // Cargar activos actualizados en el contexto
+            // Cargar activos actualizados en el contexto (para otras vistas)
             cargarActivos().catch(console.error);
 
-            // Simular lista de activos importados para la pantalla final (datos del contexto)
-            setActivosImportados([]);
-            setCurrentStep(1);  // o navegar a éxito
-            handleLimpiarTodo();
+            // Usar directamente los activos retornados por la API (sin depender del contexto actualizado)
+            const activosDeLaCarga: Activo[] = (data.activosCreados ?? []).map((ac: any) => ({
+                idActivo: ac.idActivo,
+                nombre: ac.nombre,
+                numeroSerie: ac.numeroSerie,
+                codigoInstitucional: ac.codigoInstitucional,
+                codigoSBYE: ac.codigoSBYE ?? '',
+                codigoBarras: ac.codigoBarras,
+                marca: ac.marca,
+                // campos opcionales vacíos para no romper la pantalla de éxito
+                descripcion: '',
+                estadoActivo: '',
+                ubicacion: '',
+                idActa: actaCreadaId ?? undefined,
+            }));
+            setActivosImportados(activosDeLaCarga);
+            setActaImportadaRef(nuevaActa.referencia);
+
 
         } catch (error: any) {
             console.error('Error en carga masiva:', error);
@@ -717,18 +733,21 @@ export const IngresoActivo: React.FC = () => {
         if (activosImportados.length === 0) return;
         setDescargandoTodos(true);
         try {
-            for (const act of activosImportados) {
-                await downloadBarcodeAsPng(act);
-                await new Promise(r => setTimeout(r, 150));
-            }
+            await generarPdfCodigosMasivos(activosImportados, actaImportadaRef || 'acta');
             toast.current?.show({
                 severity: 'success',
-                summary: 'Descarga Completada',
-                detail: 'Se descargaron todos los códigos de barras en formato PNG.',
+                summary: 'PDF Generado',
+                detail: `PDF con ${activosImportados.length} códigos de barras descargado correctamente.`,
                 life: 3000
             });
         } catch (error) {
             console.error(error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error al generar PDF',
+                detail: 'Ocurrió un problema al generar el PDF de códigos de barras.',
+                life: 4000
+            });
         } finally {
             setDescargandoTodos(false);
         }
@@ -1509,20 +1528,24 @@ export const IngresoActivo: React.FC = () => {
                 </div>
 
                 <div className="flex justify-center gap-3 mb-8">
-                    <Button 
-                        label="Descargar TODOS los códigos de barras" 
-                        icon="pi pi-download" 
-                        severity="success" 
-                        loading={descargandoTodos}
-                        onClick={handleDescargarTodos} 
-                        className="shadow"
-                    />
+                    {activosImportados.length > 0 && (
+                        <Button 
+                            label={`Descargar códigos de barras (PDF · ${activosImportados.length} bienes)`}
+                            icon="pi pi-file-pdf" 
+                            severity="success" 
+                            loading={descargandoTodos}
+                            onClick={handleDescargarTodos} 
+                            className="shadow"
+                            id="btn-descargar-codigos-pdf"
+                        />
+                    )}
                     <Button 
                         label="Registrar Nuevo Ingreso" 
                         icon="pi pi-plus" 
                         severity="secondary" 
                         outlined 
                         onClick={handleLimpiarTodo} 
+                        id="btn-nuevo-ingreso"
                     />
                 </div>
 

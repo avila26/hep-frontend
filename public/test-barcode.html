@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Test Barcode PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body style="font-family: sans-serif; padding: 2rem;">
+    <h1>Generando PDF de prueba para el lector...</h1>
+    <p>Por favor espera un segundo mientras se procesa la imagen de alta resolución y se descarga el PDF.</p>
+    <svg id="barcode" style="display:none;"></svg>
+    
+    <script>
+        // 1. Configuración de JsBarcode con mejoras para impresión térmica
+        JsBarcode("#barcode", "HEP-1234567890123", {
+            format: "CODE128",
+            width: 3,         // Aumentado a 3 para evitar fusión de barras (estaba en 2)
+            height: 80,       // Barras un poco más altas
+            displayValue: true,
+            fontSize: 16,
+            fontOptions: "bold",
+            font: "monospace",
+            margin: 20        // Quiet zone amplia para evitar interferencias
+        });
+
+        const svg = document.getElementById("barcode");
+        const svgString = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL || window;
+        const blobURL = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            // Escalar 4x para generar una imagen fuente de súper alta resolución
+            const scale = 4; 
+            const svgWidth = Number(svg.getAttribute("width"));
+            const svgHeight = Number(svg.getAttribute("height"));
+            
+            canvas.width = svgWidth * scale;
+            canvas.height = svgHeight * scale;
+            
+            const ctx = canvas.getContext("2d");
+            // Fondo blanco sólido absoluto
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Dibujar SVG escalado
+            ctx.scale(scale, scale);
+            ctx.drawImage(img, 0, 0);
+
+            const pngDataUrl = canvas.toDataURL("image/png");
+
+            // 2. Generación del PDF (Hoja A4 estándar para probar)
+            const doc = new window.jspdf.jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            
+            doc.setFontSize(16);
+            doc.text("Prueba de Lectura Física de Código de Barras", pageWidth / 2, 20, { align: "center" });
+            
+            doc.setFontSize(12);
+            doc.text("Configuración utilizada:", 20, 35);
+            doc.text("- Formato: CODE128", 20, 42);
+            doc.text("- Module Width (Grosor): 3", 20, 49);
+            doc.text("- Quiet Zone (Margen): 20px de espacio en blanco sólido", 20, 56);
+            doc.text("- Resolución: Exportado a 4X DPI antes de insertarse", 20, 63);
+            doc.text("- Aspect Ratio: Mantenido proporcionalmente, sin estiramientos", 20, 70);
+
+            // 3. Cálculo de aspecto para NO estirar la imagen
+            // La insertamos ocupando 150mm de ancho, calculando el alto real proporcional
+            const targetWidth = 150; 
+            const scaleRatio = targetWidth / canvas.width;
+            const targetHeight = canvas.height * scaleRatio;
+            
+            // Centrar la imagen en la hoja
+            const xPos = (pageWidth - targetWidth) / 2;
+
+            doc.addImage(pngDataUrl, "PNG", xPos, 85, targetWidth, targetHeight);
+
+            doc.save("prueba-lector-fisico.pdf");
+            
+            document.body.innerHTML += "<h2 style='color:green'>¡PDF generado y descargado con éxito!</h2>";
+            document.body.innerHTML += "<p>Abre el PDF descargado e intenta leer el código de barras con tu lector físico. Si funciona, aplicaré exactamente esta configuración a la etiqueta de 50x25mm.</p>";
+        };
+        img.src = blobURL;
+    </script>
+</body>
+</html>

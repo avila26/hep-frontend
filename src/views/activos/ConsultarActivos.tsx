@@ -6,6 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { Card } from 'primereact/card';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
+import { AutocompleteInput } from '../../components/AutocompleteInput';
 import {
     useActivos,
     Activo,
@@ -86,12 +87,13 @@ export const ConsultarActivos: React.FC = () => {
     const { activos } = useActivos();
     const navigate = useNavigate();
 
-    const [searchValue, setSearchValue] = useState('');
     const [selectedActivo, setSelectedActivo] = useState<Activo | null>(null);
     const [barcodeActivo, setBarcodeActivo] = useState<Activo | null>(null);
-
-    // Estados para los filtros avanzados (RF-RA-19 / HU-04)
-    const [filterActa, setFilterActa] = useState('');
+    
+    const [filterNombre, setFilterNombre] = useState('');
+    const [filterSbye, setFilterSbye] = useState('');
+    const [filterBarras, setFilterBarras] = useState('');
+    const [filterCuenta, setFilterCuenta] = useState('');
     const [filterResponsable, setFilterResponsable] = useState('');
     const [filterContrato, setFilterContrato] = useState('');
     const [filterEstado, setFilterEstado] = useState<string | null>(null);
@@ -109,8 +111,10 @@ export const ConsultarActivos: React.FC = () => {
     ];
 
     const handleLimpiarFiltros = () => {
-        setSearchValue('');
-        setFilterActa('');
+        setFilterNombre('');
+        setFilterSbye('');
+        setFilterBarras('');
+        setFilterCuenta('');
         setFilterResponsable('');
         setFilterContrato('');
         setFilterEstado(null);
@@ -118,39 +122,24 @@ export const ConsultarActivos: React.FC = () => {
 
     // Filtrar activos por todos los criterios activos (AND)
     const activosFiltrados = activos.filter(activo => {
-        // Bien (Nombre, Serie o Código Institucional)
-        if (searchValue.trim()) {
-            const search = searchValue.toLowerCase();
-            const matchesNombre = activo.nombre?.toLowerCase().includes(search);
-            const matchesCodigo = activo.codigoInstitucional?.toLowerCase().includes(search);
-            const matchesSerie = activo.numeroSerie?.toLowerCase().includes(search);
-            if (!matchesNombre && !matchesCodigo && !matchesSerie) {
-                return false;
-            }
+        if (filterNombre.trim()) {
+            if (!activo.nombre?.toLowerCase().includes(filterNombre.toLowerCase())) return false;
         }
-
-        // Número de acta
-        if (filterActa.trim()) {
-            const searchActa = filterActa.toLowerCase();
-            if (!activo.numeroActa?.toLowerCase().includes(searchActa)) {
-                return false;
-            }
+        if (filterSbye.trim()) {
+            if (!activo.codigoSBYE?.toLowerCase().includes(filterSbye.toLowerCase())) return false;
         }
-
-        // Responsable de recepción (responsableEntrega)
+        if (filterBarras.trim()) {
+            const barras = (activo as any).codigoBarras || activo.numeroSerie || '';
+            if (!barras.toLowerCase().includes(filterBarras.toLowerCase())) return false;
+        }
+        if (filterCuenta.trim()) {
+            if (!activo.cuentaContable?.toLowerCase().includes(filterCuenta.toLowerCase())) return false;
+        }
         if (filterResponsable.trim()) {
-            const searchResponsable = filterResponsable.toLowerCase();
-            if (!activo.responsableEntrega?.toLowerCase().includes(searchResponsable)) {
-                return false;
-            }
+            if (!activo.responsableEntrega?.toLowerCase().includes(filterResponsable.toLowerCase())) return false;
         }
-
-        // Número de contrato
         if (filterContrato.trim()) {
-            const searchContrato = filterContrato.toLowerCase();
-            if (!activo.numeroContrato?.toLowerCase().includes(searchContrato)) {
-                return false;
-            }
+            if (!activo.numeroContrato?.toLowerCase().includes(filterContrato.toLowerCase())) return false;
         }
 
         // Categoría (obsoleto)
@@ -258,48 +247,69 @@ export const ConsultarActivos: React.FC = () => {
                     />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    {/* Búsqueda por Bien */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Bien (Nombre o Código)</label>
-                        <InputText
-                            type="search"
-                            placeholder="Buscar bien..."
-                            value={searchValue}
-                            onChange={(e) => setSearchValue(e.target.value)}
-                            className="w-full text-sm"
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Nombre del Bien</label>
+                        <AutocompleteInput
+                            table="activos"
+                            column="nombre"
+                            value={filterNombre}
+                            onChange={setFilterNombre}
+                            placeholder="Buscar nombre..."
                         />
                     </div>
 
-                    {/* Número de Acta */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Número de Acta</label>
-                        <InputText
-                            placeholder="Ej: ACTA-2024-001"
-                            value={filterActa}
-                            onChange={(e) => setFilterActa(e.target.value)}
-                            className="w-full text-sm"
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Código SBYE</label>
+                        <AutocompleteInput
+                            table="activos"
+                            column="codigo_sbye"
+                            value={filterSbye}
+                            onChange={setFilterSbye}
+                            placeholder="Buscar SBYE..."
                         />
                     </div>
 
-                    {/* Responsable de Recepción */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Responsable de Recepción</label>
-                        <InputText
-                            placeholder="Buscar responsable..."
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Código de Barras</label>
+                        <AutocompleteInput
+                            table="activos"
+                            column="codigo_barras"
+                            value={filterBarras}
+                            onChange={setFilterBarras}
+                            placeholder="Buscar barras..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Cuenta Contable</label>
+                        <AutocompleteInput
+                            table="actas_ingreso"
+                            column="cuenta_contable"
+                            value={filterCuenta}
+                            onChange={setFilterCuenta}
+                            placeholder="Buscar cuenta..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Responsable</label>
+                        <AutocompleteInput
+                            table="activos"
+                            column="responsable_entrega"
                             value={filterResponsable}
-                            onChange={(e) => setFilterResponsable(e.target.value)}
-                            className="w-full text-sm"
+                            onChange={setFilterResponsable}
+                            placeholder="Buscar responsable..."
                         />
                     </div>
 
-                    {/* Número de Contrato */}
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Número de Contrato</label>
-                        <InputText
-                            placeholder="Ej: CONTRATO-2024-001"
+                        <AutocompleteInput
+                            table="activos"
+                            column="numero_contrato"
                             value={filterContrato}
-                            onChange={(e) => setFilterContrato(e.target.value)}
-                            className="w-full text-sm"
+                            onChange={setFilterContrato}
+                            placeholder="Buscar contrato..."
                         />
                     </div>
 

@@ -5,6 +5,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { AutocompleteInput } from '../../components/AutocompleteInput';
 import { Calendar } from 'primereact/calendar';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
@@ -235,12 +236,13 @@ const HistorialTraslados: React.FC = () => {
                 />
                 <div className="p-input-icon-left" style={{ position: 'relative' }}>
                     <i className="pi pi-search" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
-                    <InputText
-                        type="search"
+                    <AutocompleteInput
+                        table="activos"
+                        column="codigo_institucional"
                         value={globalFilter}
-                        onChange={e => setGlobalFilter(e.target.value)}
-                        placeholder="Buscar..."
-                        style={{ paddingLeft: '2.2rem' }}
+                        onChange={setGlobalFilter}
+                        placeholder="Buscar código activo..."
+                        className="pl-[2.2rem]"
                     />
                 </div>
             </div>
